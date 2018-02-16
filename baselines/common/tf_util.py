@@ -59,17 +59,25 @@ def make_session(num_cpu=None, make_default=False, supervise=False, logdir=None,
     if make_default:
         return tf.InteractiveSession(config=tf_config)
     elif supervise:
-        sv = tf.train.Supervisor(logdir=save_dir,
-                           is_chief=True,
-                           save_model_secs=save_model_secs,
+        # FIXME this can be used with default session so were kinda scrwewed 
+        # since its used everywhere
+        if not logdir:
+            logdir = os.getenv('OPENAI_LOGDIR')
+        init_op = tf.global_variables_initializer()
+        tf.train.get_or_create_global_step()
+        hooks = [tf.train.StopAtStepHook(last_step = 100000)]
+        sv = tf.train.MonitoredTrainingSession(checkpoint_dir=logdir,
+                           save_checkpoint_secs=save_model_secs,
                            #summary_op=None,  # we define it ourselves
+                           hooks = hooks,
                            #save_summaries_secs=120,
-                           #init_op = init_op,
+                          # init_op = init_op,
+                           config = tf_config,
                            #global_step=self.global_step,
                            #init_fn=init_fn, # This is only called if no checkpoints are found
                           )
         #sess = self.sv.PrepareSession(self.master)
-        return sv.managed_session()
+        return sv#.managed_session(config=tf_config)
 
     else:
         return tf.Session(config=tf_config)

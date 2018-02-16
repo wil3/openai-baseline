@@ -5,18 +5,27 @@ import pickle
 
 from baselines.ddpg.ddpg import DDPG
 import baselines.common.tf_util as U
+from baselines.common.instrument import *
 
 from baselines import logger
 import numpy as np
 import tensorflow as tf
 from mpi4py import MPI
+import csv
+import os
 
 
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
     normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
     popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory,
-    tau=0.01, eval_env=None, param_noise_adaption_interval=50):
+    tau=0.01, eval_env=None, param_noise_adaption_interval=50 , ckpt_dir=None, progress_dir=None, progress_update_interval=1, save_per_epoch=1):
     rank = MPI.COMM_WORLD.Get_rank()
+
+    max_steps = nb_epochs * nb_epoch_cycles * nb_rollout_steps
+    
+    # Set up metrics
+    metric_vars = build_metric_vars(max_steps)
+    metric_ops, metric_phs = get_metric_ops_phs(metric_vars)
 
     assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
     max_action = env.action_space.high
@@ -27,7 +36,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
         actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
         reward_scale=reward_scale)
     logger.info('Using agent with the following configuration:')
-    logger.info(str(agent.__dict__.items()))
+    #logger.info(str(agent.__dict__.items()))
 
     # Set up logging stuff only for a single worker.
     if rank == 0:
@@ -35,37 +44,72 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
     else:
         saver = None
 
+
+
     step = 0
     episode = 0
     eval_episode_rewards_history = deque(maxlen=100)
     episode_rewards_history = deque(maxlen=100)
-    with U.single_threaded_session() as sess:
+    #with U.single_threaded_session() as sess:
+    with U.make_session(num_cpu=1, supervise=False) as sess:
         # Prepare everything.
         agent.initialize(sess)
-        sess.graph.finalize()
+
+        restored = False
+        if ckpt_dir:
+            ckpt = tf.train.get_checkpoint_state(ckpt_dir)
+            if ckpt and ckpt.model_checkpoint_path:
+                saver.restore(sess, ckpt.model_checkpoint_path)
+                logger.info('Restored model from checkpoint {}'.format(ckpt.model_checkpoint_path))
+                restored = True
 
         agent.reset()
         obs = env.reset()
         if eval_env is not None:
             eval_obs = eval_env.reset()
         done = False
-        episode_reward = 0.
-        episode_step = 0
-        episodes = 0
-        t = 0
 
+
+        global_step = 0
+        episode_step = 0
+        t = 0
         epoch = 0
+        episodes = 0
+        episode_reward = 0.
+
         start_time = time.time()
+
 
         epoch_episode_rewards = []
         epoch_episode_steps = []
         epoch_episode_eval_rewards = []
         epoch_episode_eval_steps = []
-        epoch_start_time = time.time()
         epoch_actions = []
         epoch_qs = []
-        epoch_episodes = 0
-        for epoch in range(nb_epochs):
+        #epoch_episodes = 0
+
+        episode_data = []
+
+        if restored:
+            [global_step,  
+             episode_step, 
+             t, 
+             epoch, 
+             episodes, 
+             episode_reward, 
+             epoch_episode_steps, 
+             epoch_episode_rewards,  
+             epoch_qs] = sess.run(metric_vars)
+
+            logger.info(" Restoring global_step={} episode_step={}, t={}, epoch={}, episodes={}".format(global_step, episode_step, t, epoch, episodes))
+
+            epoch_episode_steps = epoch_episode_steps[:episodes].tolist()
+            epoch_episode_rewards = epoch_episode_rewards[:episodes].tolist()
+            epoch_qs = epoch_qs[:global_step].tolist()
+
+        sess.graph.finalize()
+
+        for epoch in range(nb_epochs - epoch):
             for cycle in range(nb_epoch_cycles):
                 # Perform rollouts.
                 for t_rollout in range(nb_rollout_steps):
@@ -78,6 +122,8 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                         env.render()
                     assert max_action.shape == action.shape
                     new_obs, r, done, info = env.step(max_action * action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
+                    episode_data.append(format_progress_data(episode_step, new_obs, max_action * action, info))
+
                     t += 1
                     if rank == 0 and render:
                         env.render()
@@ -87,6 +133,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                     # Book-keeping.
                     epoch_actions.append(action)
                     epoch_qs.append(q)
+                    global_step += 1
                     agent.store_transition(obs, action, r, new_obs, done)
                     obs = new_obs
 
@@ -97,7 +144,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                         epoch_episode_steps.append(episode_step)
                         episode_reward = 0.
                         episode_step = 0
-                        epoch_episodes += 1
+                        #epoch_episodes += 1
                         episodes += 1
 
                         agent.reset()
@@ -154,7 +201,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
             combined_stats['total/duration'] = duration
             combined_stats['total/steps_per_second'] = float(t) / float(duration)
             combined_stats['total/episodes'] = episodes
-            combined_stats['rollout/episodes'] = epoch_episodes
+            #combined_stats['rollout/episodes'] = epoch_episodes
             combined_stats['rollout/actions_std'] = np.std(epoch_actions)
             # Evaluation statistics.
             if eval_env is not None:
@@ -189,4 +236,27 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                 if eval_env and hasattr(eval_env, 'get_state'):
                     with open(os.path.join(logdir, 'eval_env_state.pkl'), 'wb') as f:
                         pickle.dump(eval_env.get_state(), f)
+
+            # Save model
+            if rank == 0 and epoch % save_per_epoch == 0 and ckpt_dir is not None:
+                #pad
+                epoch_episode_steps += [0.0] * (max_steps - len(epoch_episode_steps))
+                epoch_episode_rewards += [0.0] * (max_steps - len(epoch_episode_rewards))
+                #epoch_qs += [0.0] * (max_steps - len(epoch_qs))
+                _epoch_qs = np.array(epoch_qs)
+                _epoch_qs = np.pad(epoch_qs, ( (0, max_steps - len(epoch_qs)), (0, 0), (0,0) ), 'edge')
+
+                update_metrics(metric_ops, metric_phs, global_step,  episode_step, t, epoch, episodes, episode_reward, epoch_episode_steps, epoch_episode_rewards,  _epoch_qs)
+                #print("global step is =", global_step)
+                #sess.run(op_gs, feed_dict = {ph_gs:global_step})
+
+                task_name = "flightcontrol-ddpg-default.ckpt"
+                fname = os.path.join(ckpt_dir, task_name)
+                os.makedirs(os.path.dirname(fname), exist_ok=True)
+                saver.save(sess, fname)
+                logger.info("Saving model to {}".format(fname))
+
+            if epoch % progress_update_interval == 0:
+                write_progress(progress_dir, epoch, episode_data)
+            episode_data = []
 

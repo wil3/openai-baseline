@@ -106,7 +106,9 @@ def parse_args():
     parser.add_argument('--nb-rollout-steps', type=int, default=100)  # per epoch cycle and MPI worker
     parser.add_argument('--noise-type', type=str, default='adaptive-param_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
     parser.add_argument('--num-timesteps', type=int, default=None)
-    parser.add_argument('--log-dir')
+    parser.add_argument('--ckpt-dir', help='the directory to save model', default='checkpoint')
+    parser.add_argument('--progress-dir', help='the directory to save progress', default='progress')
+    #parser.add_argument('--log-dir')
     boolean_flag(parser, 'evaluation', default=False)
     args = parser.parse_args()
     # we don't directly specify timesteps for this script, so make sure that if we do specify them
