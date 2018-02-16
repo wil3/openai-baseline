@@ -16,21 +16,21 @@ def build_random_state_vars():
     cached = tf.get_variable("random_state_cached_gauss", [], dtype=tf.float64, trainable=False)
     return [k, pos, has_gauss, cached]
 
-def update_random_state_op(vars):
+def get_random_state_ops_phs(vars):
+    ph = []
     update_ops = []
-    # Getting registration errors for uint32
-    k = tf.placeholder(tf.int64, [624])
-    pos = tf.placeholder(tf.int64)
-    has_gauss = tf.placeholder(tf.int64)
-    cached = tf.placeholder(tf.float64)
+    with tf.variable_scope('random_state'):
+        # Getting registration errors for uint32
+        ph = [ tf.placeholder(tf.int64, [624]),
+         tf.placeholder(tf.int64),
+         tf.placeholder(tf.int64),
+         tf.placeholder(tf.float64),
+         ]
 
-    # Skip first becuase its a string
-    update_ops.append(tf.assign(vars[0], k))
-    update_ops.append(tf.assign(vars[1], pos))
-    update_ops.append(tf.assign(vars[2], has_gauss))
-    update_ops.append(tf.assign(vars[3], cached))
+        for i in range(len(vars)):
+            update_ops.append(tf.assign(vars[i], ph[i]))
 
-    return update_ops, [k, pos, has_gauss, cached]
+    return update_ops, ph 
 
 def get_metric_ops_phs(vars):
     ph = []

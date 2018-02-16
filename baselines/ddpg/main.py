@@ -65,15 +65,12 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, **kwargs):
     logger.info('rank {}: seed={}, logdir={}'.format(rank, seed, logger.get_dir()))
     tf.reset_default_graph()
     set_global_seeds(seed)
-    env.seed(seed)
-    if eval_env is not None:
-        eval_env.seed(seed)
 
     # Disable logging for rank != 0 to avoid noise.
     if rank == 0:
         start_time = time.time()
     training.train(env=env, eval_env=eval_env, param_noise=param_noise,
-        action_noise=action_noise, actor=actor, critic=critic, memory=memory, **kwargs)
+        action_noise=action_noise, actor=actor, critic=critic, memory=memory, seed=seed, **kwargs)
     env.close()
     if eval_env is not None:
         eval_env.close()

@@ -39,6 +39,11 @@ class Monitor(Wrapper):
         self.total_steps = 0
         self.current_reset_info = {} # extra info about the current episode, that was passed in during reset()
 
+
+    def seed(self, seed=None, state = None):
+        # Need to overwrite this so we can get the state
+        self.env.seed(seed, state)
+
     def reset(self, **kwargs):
         if not self.allow_early_resets and not self.needs_reset:
             raise RuntimeError("Tried to reset an environment before done. If you want to allow early resets, wrap your env with Monitor(env, path, allow_early_resets=True)")
