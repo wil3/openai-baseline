@@ -38,7 +38,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
         actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
         reward_scale=reward_scale)
     logger.info('Using agent with the following configuration:')
-    #logger.info(str(agent.__dict__.items()))
+    logger.info(str(agent.__dict__.items()))
 
     # Set up logging stuff only for a single worker.
     if rank == 0:
@@ -101,7 +101,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
              epoch_episode_rewards,  
              epoch_qs] = sess.run(metric_vars)
 
-            start_epoch = epoch
+            start_epoch = epoch + 1
             logger.info(" Restoring global_step={} episode_step={}, t={}, epoch={}, episodes={}".format(global_step, episode_step, t, epoch, episodes))
 
             epoch_episode_steps = epoch_episode_steps[:episodes].tolist()
@@ -157,6 +157,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
 
                     if done:
                         # Episode done.
+                        logger.info("Episode {} done".format(episodes))
                         epoch_episode_rewards.append(episode_reward)
                         episode_rewards_history.append(episode_reward)
                         epoch_episode_steps.append(episode_step)
@@ -266,14 +267,23 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
 
             # Save model
             if rank == 0 and epoch % save_per_epoch == 0 and ckpt_dir is not None:
+                print ("Max size ", max_steps)
+                print (len(epoch_qs))
                 #pad
-                epoch_episode_steps += [0.0] * (max_steps - len(epoch_episode_steps))
-                epoch_episode_rewards += [0.0] * (max_steps - len(epoch_episode_rewards))
-                #epoch_qs += [0.0] * (max_steps - len(epoch_qs))
-                _epoch_qs = np.array(epoch_qs)
-                _epoch_qs = np.pad(epoch_qs, ( (0, max_steps - len(epoch_qs)), (0, 0), (0,0) ), 'edge')
+                _epoch_episode_steps = None
+                _epoch_episode_steps = None
+                if len(epoch_episode_steps) == 0:
+                    _epoch_episode_steps = np.zeros((max_steps,), dtype=int)
+                else:
+                    _epoch_episode_steps = np.pad(epoch_episode_steps, (0, max_steps - len(epoch_episode_steps)), 'edge')
 
-                update_metrics(metric_ops, metric_phs, global_step,  episode_step, t, epoch, episodes, episode_reward, epoch_episode_steps, epoch_episode_rewards,  _epoch_qs)
+                if len(epoch_episode_rewards) == 0:
+                    _epoch_episode_rewards = np.zeros((max_steps,))
+                else:
+                    _epoch_episode_rewards = np.pad(epoch_episode_rewards, (0, max_steps - len(epoch_episode_rewards)), 'edge')
+                #epoch_qs += [0.0] * (max_steps - len(epoch_qs))
+                _epoch_qs = np.pad(epoch_qs, ( (0, max_steps - len(epoch_qs)), (0, 0), (0,0) ), 'edge')
+                update_metrics(metric_ops, metric_phs, global_step,  episode_step, t, epoch, episodes, episode_reward, _epoch_episode_steps, _epoch_episode_rewards,  _epoch_qs)
                 #print("global step is =", global_step)
                 #sess.run(op_gs, feed_dict = {ph_gs:global_step})
 
@@ -281,7 +291,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                 fname = os.path.join(ckpt_dir, task_name)
                 os.makedirs(os.path.dirname(fname), exist_ok=True)
                 saver.save(sess, fname)
-                logger.info("Saving model to {}".format(fname))
+                logger.info("Saved model to {}".format(fname))
 
             if epoch % progress_update_interval == 0:
                 write_progress(progress_dir, epoch, episode_data)
