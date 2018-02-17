@@ -163,6 +163,10 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                         epoch_episode_steps.append(episode_step)
                         episode_reward = 0.
                         episode_step = 0
+
+                        write_progress(progress_dir, episodes, episode_data)
+                        episode_data = []
+
                         #epoch_episodes += 1
                         episodes += 1
 
@@ -267,8 +271,6 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
 
             # Save model
             if rank == 0 and epoch % save_per_epoch == 0 and ckpt_dir is not None:
-                print ("Max size ", max_steps)
-                print (len(epoch_qs))
                 #pad
                 _epoch_episode_steps = None
                 _epoch_episode_steps = None
@@ -293,7 +295,4 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                 saver.save(sess, fname)
                 logger.info("Saved model to {}".format(fname))
 
-            if epoch % progress_update_interval == 0:
-                write_progress(progress_dir, epoch, episode_data)
-            episode_data = []
 
