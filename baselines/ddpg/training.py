@@ -292,7 +292,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                 task_name = "flightcontrol-ddpg-default.ckpt"
                 fname = os.path.join(ckpt_dir, task_name)
                 os.makedirs(os.path.dirname(fname), exist_ok=True)
-                saver.save(sess, fname)
+                saver.save(sess, fname, global_step=epoch)
                 logger.info("Saved model to {}".format(fname))
 
 
