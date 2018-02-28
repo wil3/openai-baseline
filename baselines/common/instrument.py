@@ -85,16 +85,18 @@ def update_metrics(ops, ph, *args):
 
 def format_progress_data(step, state, action, info):
     sim_time = 0 if "sim_time"  not in info else info["sim_time"]
-    reward_rpy = [0,0,0] if "reward_rpy"  not in info else info["reward_rpy"]
+    reward_rpy = np.zeros(3) if "reward_rpy"  not in info else info["reward_rpy"]
+    sp = np.zeros(3) if "sp" not in info else info["sp"]
+    rpy = np.zeros(3) if "current_rpy" not in info else info["current_rpy"]
 
-    return {'step': step,
+    data = {'step': step,
             'sim_time': sim_time,
-            'sp_r': state[0], 
-            'sp_p' : state[1],
-            'sp_y': state[2], 
-            'r': state[3], 
-            'p': state[4], 
-            'y': state[5], 
+            'sp_r': sp[0], 
+            'sp_p' : sp[1],
+            'sp_y': sp[2], 
+            'r': rpy[0], 
+            'p': rpy[1], 
+            'y': rpy[2], 
             "m0": action[0], 
             "m1": action[1], 
             "m2": action[2], 
@@ -102,6 +104,11 @@ def format_progress_data(step, state, action, info):
             'r_reward' : reward_rpy[0], 
             'p_reward': reward_rpy[1], 
             'y_reward': reward_rpy[2]} 
+    # Append the actual state used
+    for i in range(len(state)): 
+        data["s{}".format(i)] = state[i]
+
+    return data
 
 def write_progress(progress_dir, episode, episode_data):
     if not os.path.exists(progress_dir):
@@ -109,7 +116,8 @@ def write_progress(progress_dir, episode, episode_data):
     filename =  "ep-{}.csv".format(episode)
     filepath = os.path.join(progress_dir, filename)
     with open(filepath, 'w', newline='') as csvfile:
-        fieldnames = ['step', 'sim_time', 'sp_r', 'sp_p', 'sp_y', 'r', 'p', 'y', "m0", "m1", "m2", "m3", 'r_reward', 'p_reward', 'y_reward'] 
+        # Get the first entry and grab the keys used
+        fieldnames = episode_data[0].keys() 
         data_writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         data_writer.writeheader()
         for step in episode_data:
