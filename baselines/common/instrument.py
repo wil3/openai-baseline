@@ -88,6 +88,10 @@ def format_progress_data(step, state, action, info):
     reward_rpy = np.zeros(3) if "reward_rpy"  not in info else info["reward_rpy"]
     sp = np.zeros(3) if "sp" not in info else info["sp"]
     rpy = np.zeros(3) if "current_rpy" not in info else info["current_rpy"]
+    pterm = np.zeros(3) if "Pterm" not in info else info["Pterm"]
+    iterm = np.zeros(3) if "Iterm" not in info else info["Iterm"]
+    dterm = np.zeros(3) if "Dterm" not in info else info["Dterm"]
+    
 
     data = {'step': step,
             'sim_time': sim_time,
@@ -103,7 +107,17 @@ def format_progress_data(step, state, action, info):
             "m3": action[3], 
             'r_reward' : reward_rpy[0], 
             'p_reward': reward_rpy[1], 
-            'y_reward': reward_rpy[2]} 
+            'y_reward': reward_rpy[2],
+            'P_r':pterm[0],
+            'P_p':pterm[1],
+            'P_y':pterm[2],
+            'I_r':iterm[0],
+            'I_p':iterm[1],
+            'I_y':iterm[2],
+            'D_r':dterm[0],
+            'D_p':dterm[1],
+            'D_y':dterm[2],
+            } 
     # Append the actual state used
     for i in range(len(state)): 
         data["s{}".format(i)] = state[i]
@@ -117,7 +131,18 @@ def write_progress(progress_dir, episode, episode_data):
     filepath = os.path.join(progress_dir, filename)
     with open(filepath, 'w', newline='') as csvfile:
         # Get the first entry and grab the keys used
-        fieldnames = episode_data[0].keys() 
+        fieldnames = ['step', 'sim_time', 'sp_r', 'sp_p', 'sp_y', 'r', 'p', 'y', "m0", "m1", "m2", "m3", 'r_reward', 'p_reward','y_reward', 'P_r', 'P_p', 'P_y', 'I_r', 'I_p', 'I_y','D_r', 'D_p', 'D_y'] 
+        # Append states used at the end to make csv file more readable
+        i = 0
+        while True:
+            state_key = "s{}".format(i)
+            if state_key in episode_data[0]:
+                fieldnames.append(state_key)
+                i += 1
+            else:
+                break
+
+        #fieldnames = episode_data[0].keys() 
         data_writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         data_writer.writeheader()
         for step in episode_data:
