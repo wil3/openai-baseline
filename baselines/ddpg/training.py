@@ -18,7 +18,7 @@ import os
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
     normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
     popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory,
-    tau=0.01, eval_env=None, param_noise_adaption_interval=50 , ckpt_dir=None, progress_dir=None, progress_update_interval=1, save_per_epoch=1, seed=1):
+    tau=0.01, eval_env=None, param_noise_adaption_interval=50 , ckpt_dir=None, progress_dir=None, progress_update_interval=1, save_per_epoch=50, seed=1):
     rank = MPI.COMM_WORLD.Get_rank()
 
     max_steps = nb_epochs * nb_epoch_cycles * nb_rollout_steps
@@ -42,7 +42,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
 
     # Set up logging stuff only for a single worker.
     if rank == 0:
-        saver = tf.train.Saver()
+        saver = tf.train.Saver(max_to_keep=2)
     else:
         saver = None
 
@@ -140,7 +140,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                         env.render()
                     assert max_action.shape == action.shape
                     new_obs, r, done, info = env.step(max_action * action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
-                    episode_data.append(format_progress_data(episode_step, new_obs, max_action * action, info))
+                    episode_data.append(format_progress_data(episode_step, new_obs, r, max_action * action, info))
 
                     t += 1
                     if rank == 0 and render:
