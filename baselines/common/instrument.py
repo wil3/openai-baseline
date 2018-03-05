@@ -163,3 +163,4 @@ def write_progress(progress_dir, episode, episode_data):
         data_writer.writeheader()
         for step in episode_data:
             data_writer.writerow(step)
+    return filepath
