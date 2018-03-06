@@ -63,7 +63,7 @@ def traj_segment_generator(pi, env, horizon, stochastic, flight_log=None):
         if new:
             ep_rets.append(cur_ep_ret)
             ep_lens.append(cur_ep_len)
-            flight_log.save(episodes)
+            flight_log.save(cur_ep_len)
             flight_log.clear()
             cur_ep_ret = 0
             cur_ep_len = 0
