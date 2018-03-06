@@ -10,7 +10,7 @@ from baselines.common.mpi_adam import MpiAdam
 from baselines.common.cg import cg
 from contextlib import contextmanager
 
-def traj_segment_generator(pi, env, horizon, stochastic):
+def traj_segment_generator(pi, env, horizon, stochastic, flight_log=None):
     # Initialize state variables
     t = 0
     ac = env.action_space.sample()
@@ -53,7 +53,8 @@ def traj_segment_generator(pi, env, horizon, stochastic):
         acs[i] = ac
         prevacs[i] = prevac
 
-        ob, rew, new, _ = env.step(ac)
+        ob, rew, new, info = env.step(ac)
+        flight_log.add(cur_ep_len, ob, rew, ac, info)
         rews[i] = rew
 
         cur_ep_ret += rew
@@ -61,6 +62,8 @@ def traj_segment_generator(pi, env, horizon, stochastic):
         if new:
             ep_rets.append(cur_ep_ret)
             ep_lens.append(cur_ep_len)
+            flight_log.save(episodes)
+            flight_log.clear()
             cur_ep_ret = 0
             cur_ep_len = 0
             ob = env.reset()
@@ -88,8 +91,14 @@ def learn(env, policy_fn, *,
         vf_stepsize=3e-4,
         vf_iters =3,
         max_timesteps=0, max_episodes=0, max_iters=0,  # time constraint
-        callback=None
+        callback=None,
+        flight_log = None,
+        ckpt_dir = None,
+        save_per_episode=50
         ):
+    saver = None
+    if ckpt_dir:
+        saver = tf.train.Saver(max_to_keep=2)
     nworkers = MPI.COMM_WORLD.Get_size()
     rank = MPI.COMM_WORLD.Get_rank()
     np.set_printoptions(precision=3)
@@ -174,7 +183,8 @@ def learn(env, policy_fn, *,
 
     # Prepare for rollouts
     # ----------------------------------------
-    seg_gen = traj_segment_generator(pi, env, timesteps_per_batch, stochastic=True)
+    seg_gen = traj_segment_generator(pi, env, timesteps_per_batch,
+                                     stochastic=True, flight_log=flight_log)
 
     episodes_so_far = 0
     timesteps_so_far = 0
@@ -187,11 +197,22 @@ def learn(env, policy_fn, *,
 
     while True:
         if callback: callback(locals(), globals())
+        
+        end = False
         if max_timesteps and timesteps_so_far >= max_timesteps:
-            break
+            end = True
         elif max_episodes and episodes_so_far >= max_episodes:
-            break
+            end = True
         elif max_iters and iters_so_far >= max_iters:
+            end = True
+
+        if saver and iters_so_far % save_per_episode == 0 or end:
+            task_name = "flightcontrol-trpo-default.ckpt"
+            fname = os.path.join(ckpt_dir, task_name)
+            os.makedirs(os.path.dirname(fname), exist_ok=True)
+            saver.save(tf.get_default_session(), fname)
+
+        if end:
             break
         logger.log("********** Iteration %i ************"%iters_so_far)
 
