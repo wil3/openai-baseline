@@ -96,9 +96,6 @@ def learn(env, policy_fn, *,
         ckpt_dir = None,
         save_per_episode=50
         ):
-    saver = None
-    if ckpt_dir:
-        saver = tf.train.Saver(max_to_keep=2)
     nworkers = MPI.COMM_WORLD.Get_size()
     rank = MPI.COMM_WORLD.Get_rank()
     np.set_printoptions(precision=3)
@@ -173,6 +170,9 @@ def learn(env, policy_fn, *,
         MPI.COMM_WORLD.Allreduce(x, out, op=MPI.SUM)
         out /= nworkers
         return out
+    saver = None
+    if ckpt_dir:
+        saver = tf.train.Saver(max_to_keep=2)
 
     U.initialize()
     th_init = get_flat()
