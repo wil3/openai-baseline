@@ -23,6 +23,7 @@ def traj_segment_generator(pi, env, horizon, stochastic, flight_log=None):
     cur_ep_len = 0
     ep_rets = []
     ep_lens = []
+    ep_number = 0
 
     # Initialize history arrays
     obs = np.array([ob for _ in range(horizon)])
@@ -63,8 +64,9 @@ def traj_segment_generator(pi, env, horizon, stochastic, flight_log=None):
         if new:
             ep_rets.append(cur_ep_ret)
             ep_lens.append(cur_ep_len)
-            flight_log.save(cur_ep_len)
+            flight_log.save(ep_number)
             flight_log.clear()
+            ep_number += 1
             cur_ep_ret = 0
             cur_ep_len = 0
             ob = env.reset()
