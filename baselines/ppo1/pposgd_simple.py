@@ -91,8 +91,8 @@ def learn(env, policy_fn, *,
         adam_epsilon=1e-5,
         schedule='constant', # annealing for stepsize parameters (epsilon and adam)
         flight_log = None,
-        ckpt_dir = None
-        save_per_epsode=50      ):
+        ckpt_dir = None,
+        save_per_episode=50      ):
 
     saver = None
     if ckpt_dir:
@@ -166,7 +166,7 @@ def learn(env, policy_fn, *,
         elif max_seconds and time.time() - tstart >= max_seconds:
             end = True
 
-        if saver and iters_so_far % save_per_epsode == 0 or end:
+        if saver and iters_so_far % save_per_episode == 0 or end:
             task_name = "flightcontrol-trpo-ppo-default.ckpt"
             fname = os.path.join(ckpt_dir, task_name)
             os.makedirs(os.path.dirname(fname), exist_ok=True)
