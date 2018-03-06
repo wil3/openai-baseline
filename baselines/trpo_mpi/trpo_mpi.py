@@ -9,6 +9,7 @@ from collections import deque
 from baselines.common.mpi_adam import MpiAdam
 from baselines.common.cg import cg
 from contextlib import contextmanager
+import os.path
 
 def traj_segment_generator(pi, env, horizon, stochastic, flight_log=None):
     # Initialize state variables
