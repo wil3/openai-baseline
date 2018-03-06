@@ -40,6 +40,7 @@ from mpi4py import MPI
 from baselines import logger
 from baselines.ppo1.mlp_policy import MlpPolicy
 from baselines.trpo_mpi import trpo_mpi
+from baselines.common import set_global_seeds
 
 def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir):
     import baselines.common.tf_util as U
@@ -52,12 +53,14 @@ def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir):
     else:
         logger.configure(format_strs=[])
         logger.set_level(logger.DISABLED)
-    workerseed = seed + 10000 * MPI.COMM_WORLD.Get_rank()
+    workerseed = seed + 1000000 * rank
     def policy_fn(name, ob_space, ac_space):
         return MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space,
             hid_size=32, num_hid_layers=2)
     flight_log = FlightLog(flight_log_dir)
     env = gym.make(env_id)
+    env.seed(workerseed)
+    set_global_seeds(workerseed)
     trpo_mpi.learn(env, policy_fn, timesteps_per_batch=1024, max_kl=0.01, cg_iters=10, cg_damping=0.1,
         max_timesteps=num_timesteps, gamma=0.99, lam=0.98, vf_iters=5,
         vf_stepsize=1e-3,
