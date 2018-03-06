@@ -32,6 +32,8 @@ def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir):
     env.close()
 """
 
+import gym
+import gym_flightcontrol
 from baselines.common.fc_learning_utils import FlightLog
 import argparse
 from mpi4py import MPI
