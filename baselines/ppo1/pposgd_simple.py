@@ -8,7 +8,8 @@ from baselines.common.mpi_moments import mpi_moments
 from mpi4py import MPI
 from collections import deque
 
-def traj_segment_generator(pi, env, horizon, stochastic):
+from baselines.common.instrument import *
+def traj_segment_generator(pi, env, horizon, stochastic, flight_log=None):
     t = 0
     ac = env.action_space.sample() # not used, just so we have the datatype
     new = True # marks if we're on first timestep of an episode
@@ -48,7 +49,8 @@ def traj_segment_generator(pi, env, horizon, stochastic):
         acs[i] = ac
         prevacs[i] = prevac
 
-        ob, rew, new, _ = env.step(ac)
+        ob, rew, new, info = env.step(ac)
+        flight_log.add(cur_ep_len, ob, rew, ac, info)
         rews[i] = rew
 
         cur_ep_ret += rew
@@ -58,6 +60,8 @@ def traj_segment_generator(pi, env, horizon, stochastic):
             ep_lens.append(cur_ep_len)
             cur_ep_ret = 0
             cur_ep_len = 0
+            flight_log.save(episodes)
+            flight_log.clear()
             ob = env.reset()
         t += 1
 
@@ -85,8 +89,15 @@ def learn(env, policy_fn, *,
         max_timesteps=0, max_episodes=0, max_iters=0, max_seconds=0,  # time constraint
         callback=None, # you can do anything in the callback, since it takes locals(), globals()
         adam_epsilon=1e-5,
-        schedule='constant' # annealing for stepsize parameters (epsilon and adam)
-        ):
+        schedule='constant', # annealing for stepsize parameters (epsilon and adam)
+        flight_log = None,
+        ckpt_dir = None
+        save_per_epsode=50      ):
+
+    saver = None
+    if ckpt_dir:
+        saver = tf.train.Saver(max_to_keep=2)
+
     # Setup losses and stuff
     # ----------------------------------------
     ob_space = env.observation_space
@@ -130,7 +141,8 @@ def learn(env, policy_fn, *,
 
     # Prepare for rollouts
     # ----------------------------------------
-    seg_gen = traj_segment_generator(pi, env, timesteps_per_actorbatch, stochastic=True)
+    seg_gen = traj_segment_generator(pi, env, timesteps_per_actorbatch,
+                                     stochastic=True, flight_log=flight_log)
 
     episodes_so_far = 0
     timesteps_so_far = 0
@@ -143,14 +155,26 @@ def learn(env, policy_fn, *,
 
     while True:
         if callback: callback(locals(), globals())
+
+        end = False
         if max_timesteps and timesteps_so_far >= max_timesteps:
-            break
+            end = True
         elif max_episodes and episodes_so_far >= max_episodes:
-            break
+            end = True
         elif max_iters and iters_so_far >= max_iters:
-            break
+            end = True
         elif max_seconds and time.time() - tstart >= max_seconds:
+            end = True
+
+        if saver and iters_so_far % save_per_epsode == 0 or end:
+            task_name = "flightcontrol-trpo-ppo-default.ckpt"
+            fname = os.path.join(ckpt_dir, task_name)
+            os.makedirs(os.path.dirname(fname), exist_ok=True)
+            saver.save(tf.get_default_session(), fname)
+
+        if end:
             break
+
 
         if schedule == 'constant':
             cur_lrmult = 1.0

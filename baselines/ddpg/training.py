@@ -5,7 +5,7 @@ import pickle
 
 from baselines.ddpg.ddpg import DDPG
 import baselines.common.tf_util as U
-from baselines.common.instrument import *
+from baselines.common.fc_learning_utils import *
 
 from baselines import logger
 import numpy as np
@@ -127,6 +127,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
 
         sess.graph.finalize()
 
+        flight_log = FlightLog(progress_dir)
         for epoch in range(start_epoch, nb_epochs):
             for cycle in range(nb_epoch_cycles):
                 # Perform rollouts.
@@ -140,7 +141,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                         env.render()
                     assert max_action.shape == action.shape
                     new_obs, r, done, info = env.step(max_action * action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
-                    episode_data.append(format_progress_data(episode_step, new_obs, r, max_action * action, info))
+                    flight_log.add(episode_step, new_obs, r, max_action * action, info)
 
                     t += 1
                     if rank == 0 and render:
@@ -157,15 +158,15 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
 
                     if done:
                         # Episode done.
-                        logger.info("Episode {} done".format(episodes))
+                        #logger.info("Episode {} done".format(episodes))
                         epoch_episode_rewards.append(episode_reward)
                         episode_rewards_history.append(episode_reward)
                         epoch_episode_steps.append(episode_step)
                         episode_reward = 0.
                         episode_step = 0
 
-                        write_progress(progress_dir, episodes, episode_data)
-                        episode_data = []
+                        flight_log.save(episodes)
+                        flight_log.clear()
 
                         #epoch_episodes += 1
                         episodes += 1
