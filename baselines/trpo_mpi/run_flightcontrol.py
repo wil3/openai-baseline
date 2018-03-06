@@ -5,7 +5,7 @@ from baselines import logger
 from baselines.ppo1.mlp_policy import MlpPolicy
 from baselines.trpo_mpi import trpo_mpi
 from mpi4py import MPI
-
+import argparse
 import gym_flightcontrol
 
 def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir):
