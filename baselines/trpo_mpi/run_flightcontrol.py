@@ -37,7 +37,7 @@ if __name__ == '__main__':
     parser.add_argument('--num-timesteps', type=int, default=1e7)
     parser.add_argument('--seed', help='RNG seed', type=int, default=0)
     parser.add_argument('--flight-log-dir', type=str, default='./')
-    parser.add_argument('---ckpt-dir', type=str, default='./')
+    parser.add_argument('--ckpt-dir', type=str, default='./')
 
     args = parser.parse_args()
     train(args.env_id, args.num_timesteps, args.seed, args.flight_log_dir,
