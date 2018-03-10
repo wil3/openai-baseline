@@ -93,6 +93,8 @@ class FlightLog:
         # Build dynamically
         self.log_fieldnames = [] 
 
+        self.reward_sum = 0
+
     def add(self, step, state, r, action, info):
         # Add order to appear when saved to file
         record = {'step': step}
@@ -108,6 +110,11 @@ class FlightLog:
         record["reward"] = r
         if "reward" not in self.log_fieldnames:
             self.log_fieldnames.append("reward")
+
+        reward_sum += r
+        record["reward_sum"] = reward_sum
+        if "reward_sum" not in self.log_fieldnames:
+            self.log_fieldnames.append("reward_sum")
 
         if "sp" in info:
             sp = info["sp"]
@@ -140,6 +147,7 @@ class FlightLog:
 
     def clear(self):
         self.log = []
+        self.reward_sum = 0
 
     def save(self, episode):
         filename =  "ep-{}.csv".format(episode)
