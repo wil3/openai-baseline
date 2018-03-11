@@ -134,6 +134,7 @@ class FlightLog:
         if "m0" not in self.log_fieldnames:
             self.log_fieldnames += ["m0", "m1", "m2", "m3"]
 
+        
 
         for i in range(len(state)): 
             state_name = "s{}".format(i)
@@ -141,6 +142,10 @@ class FlightLog:
             if state_name not in self.log_fieldnames:
                 self.log_fieldnames.append(state_name)
 
+        if "health" in info:
+            record.["health"] = info["health"]
+            if "health" not in self.log_fieldnames:
+                self.log_fieldnames.append("health")
 
 
         self.log.append(record)
