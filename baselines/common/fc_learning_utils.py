@@ -111,8 +111,8 @@ class FlightLog:
         if "reward" not in self.log_fieldnames:
             self.log_fieldnames.append("reward")
 
-        reward_sum += r
-        record["reward_sum"] = reward_sum
+        self.reward_sum += r
+        record["reward_sum"] = self.reward_sum
         if "reward_sum" not in self.log_fieldnames:
             self.log_fieldnames.append("reward_sum")
 
