@@ -146,7 +146,10 @@ class FlightLog:
             record["health"] = info["health"]
             if "health" not in self.log_fieldnames:
                 self.log_fieldnames.append("health")
-
+        if "axis" in info:
+            record["axis"] = info["axis"]
+            if "axis" not in self.log_fieldnames:
+                self.log_fieldnames.append("axis")
 
         self.log.append(record)
 
