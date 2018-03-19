@@ -42,7 +42,7 @@ from baselines.ppo1.mlp_policy import MlpPolicy
 from baselines.trpo_mpi import trpo_mpi
 from baselines.common import set_global_seeds
 
-def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir):
+def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir, model_ckpt_path):
     import baselines.common.tf_util as U
     sess = U.single_threaded_session()
     sess.__enter__()
@@ -65,7 +65,8 @@ def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir):
         max_timesteps=num_timesteps, gamma=0.99, lam=0.98, vf_iters=5,
         vf_stepsize=1e-3,
             flight_log = flight_log,
-            ckpt_dir = ckpt_dir
+            ckpt_dir = ckpt_dir,
+            model_ckpt_path = model_ckpt_path
             )
     env.close()
 
@@ -78,8 +79,9 @@ if __name__ == '__main__':
     parser.add_argument('--seed', help='RNG seed', type=int, default=0)
     parser.add_argument('--flight-log-dir', type=str, default='./')
     parser.add_argument('--ckpt-dir', type=str, default='./')
+    parser.add_argument('--model-ckpt-path', type=str, default=None)
 
     args = parser.parse_args()
     train(args.env_id, args.num_timesteps, args.seed, args.flight_log_dir,
-          args.ckpt_dir )
+          args.ckpt_dir, args.model_ckpt_path )
 

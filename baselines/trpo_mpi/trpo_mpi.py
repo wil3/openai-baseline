@@ -97,7 +97,8 @@ def learn(env, policy_fn, *,
         callback=None,
         flight_log = None,
         ckpt_dir = None,
-        save_per_episode=50
+        save_per_episode=50,
+        model_ckpt_path = None
         ):
     nworkers = MPI.COMM_WORLD.Get_size()
     rank = MPI.COMM_WORLD.Get_rank()
@@ -178,6 +179,12 @@ def learn(env, policy_fn, *,
         saver = tf.train.Saver(max_to_keep=2)
 
     U.initialize()
+
+    if model_ckpt_path:
+        saver.restore(sess, model_ckpt_path)
+        logger.info('Restored model from checkpoint {}'.format(model_ckpt_path))
+
+
     th_init = get_flat()
     MPI.COMM_WORLD.Bcast(th_init, root=0)
     set_from_flat(th_init)
