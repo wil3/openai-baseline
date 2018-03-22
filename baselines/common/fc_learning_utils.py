@@ -151,6 +151,16 @@ class FlightLog:
             if "axis" not in self.log_fieldnames:
                 self.log_fieldnames.append("axis")
 
+
+        if "debug" in info:
+            debug = info["debug"]
+            for key, val in debug.items():
+                log_key = "dbg-{}".format(key)
+                record[log_key] = val
+                if log_key not in self.log_fieldnames:
+                    self.log_fieldnames.append(log_key)
+
+
         self.log.append(record)
 
     def clear(self):
