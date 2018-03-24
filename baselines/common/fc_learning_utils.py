@@ -136,11 +136,13 @@ class FlightLog:
 
         
 
+        """
         for i in range(len(state)): 
             state_name = "s{}".format(i)
             record[state_name] = state[i]
             if state_name not in self.log_fieldnames:
                 self.log_fieldnames.append(state_name)
+        """
 
         if "health" in info:
             record["health"] = info["health"]
