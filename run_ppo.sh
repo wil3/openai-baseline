@@ -9,7 +9,7 @@ RESULT_HOME=/home/wil/workspace/buflightdev/projects/neurocontroller/att-sitl/re
 export OPENAI_LOGDIR=$RESULT_HOME/logs
 cd $BASELINE_DIR
 
-python3 -m baselines.trpo_mpi.run_flightcontrol \
+python3 -m baselines.ppo1.run_flightcontrol \
  --env-id=$ENV \
  --ckpt-dir=$RESULT_HOME/checkpoints \
  --flight-log-dir=$RESULT_HOME/model-progress \
