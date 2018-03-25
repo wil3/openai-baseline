@@ -94,9 +94,6 @@ def learn(env, policy_fn, *,
         ckpt_dir = None,
         save_per_episode=50      ):
 
-    saver = None
-    if ckpt_dir:
-        saver = tf.train.Saver(max_to_keep=2)
 
     # Setup losses and stuff
     # ----------------------------------------
@@ -136,6 +133,9 @@ def learn(env, policy_fn, *,
         for (oldv, newv) in zipsame(oldpi.get_variables(), pi.get_variables())])
     compute_losses = U.function([ob, ac, atarg, ret, lrmult], losses)
 
+    saver = None
+    if ckpt_dir:
+        saver = tf.train.Saver(max_to_keep=2)
     U.initialize()
     adam.sync()
 
