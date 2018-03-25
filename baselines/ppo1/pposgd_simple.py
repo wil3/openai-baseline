@@ -166,7 +166,7 @@ def learn(env, policy_fn, *,
             end = True
 
         if saver and iters_so_far % save_per_episode == 0 or end:
-            task_name = "flightcontrol-trpo-ppo-default.ckpt"
+            task_name = "ppo1-{}.ckpt".format(env.spec.id
             fname = os.path.join(ckpt_dir, task_name)
             os.makedirs(os.path.dirname(fname), exist_ok=True)
             saver.save(tf.get_default_session(), fname)
