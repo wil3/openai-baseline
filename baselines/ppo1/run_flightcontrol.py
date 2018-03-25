@@ -11,6 +11,7 @@ from baselines.ppo1.mlp_policy import MlpPolicy
 from baselines.common import set_global_seeds
 
 def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir, model_ckpt_path):
+    from baselines.ppo1 import pposgd_simple
     import baselines.common.tf_util as U
     sess = U.single_threaded_session()
     sess.__enter__()
