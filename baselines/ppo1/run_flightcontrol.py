@@ -38,7 +38,7 @@ def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir, model_ckpt_path
             gamma=0.99, lam=0.95, schedule='linear',
             flight_log = flight_log,
             ckpt_dir = ckpt_dir,
-            model_ckpt_path = model_ckpt_path
+            #model_ckpt_path = model_ckpt_path
             )
     env.close()
 
