@@ -12,6 +12,7 @@ from baselines.common.mpi_moments import mpi_moments
 import baselines.her.experiment.config as config
 from baselines.her.rollout import RolloutWorker
 from baselines.her.util import mpi_fork
+from baselines.common.fc_learning_utils import FlightLog
 
 
 def mpi_average(value):
@@ -159,8 +160,9 @@ def launch(
 
     evaluator = RolloutWorker(params['make_env'], policy, dims, logger, **eval_params)
     evaluator.seed(rank_seed)
-
-    flight_log = FlightLog(flight_log_dir)
+    flight_log = None
+    if flight_log_dir:
+        flight_log = FlightLog(flight_log_dir)
     train(
         logdir=logdir, policy=policy, rollout_worker=rollout_worker,
         evaluator=evaluator, n_epochs=n_epochs, n_test_rollouts=params['n_test_rollouts'],

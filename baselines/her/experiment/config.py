@@ -3,6 +3,7 @@ import numpy as np
 import json
 import os
 import gym
+import gym_flightcontrol
 
 from baselines import logger
 from baselines.her.ddpg import DDPG
