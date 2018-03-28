@@ -155,14 +155,15 @@ def launch(
         rollout_params[name] = params[name]
         eval_params[name] = params[name]
 
+    flight_log = None
+    if flight_log_dir:
+        flight_log = FlightLog(flight_log_dir)
+    rollout_params["flight_log"] = flight_log
     rollout_worker = RolloutWorker(params['make_env'], policy, dims, logger, **rollout_params)
     rollout_worker.seed(rank_seed)
 
     evaluator = RolloutWorker(params['make_env'], policy, dims, logger, **eval_params)
     evaluator.seed(rank_seed)
-    flight_log = None
-    if flight_log_dir:
-        flight_log = FlightLog(flight_log_dir)
     train(
         logdir=logdir, policy=policy, rollout_worker=rollout_worker,
         evaluator=evaluator, n_epochs=n_epochs, n_test_rollouts=params['n_test_rollouts'],

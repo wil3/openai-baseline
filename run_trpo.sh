@@ -5,7 +5,8 @@ cd $GYM_HOME
 COMMIT=$(git describe --always)
 #ENV=attitude-continuous-rpy-5-v0
 #ENV=attitude-episodic-rpy-5-v0
-ENV=attitude-episodic-rpy-6-v0
+#ENV=attitude-episodic-rpy-6-v0
+ENV=attitude-episodic-5-v0
 DIR_NAME=ALG=trpo-ENV=${COMMIT}_${ENV}
 RESULT_HOME=/home/wil/workspace/buflightdev/projects/neurocontroller/att-sitl/results/baselines/${DIR_NAME}
 export OPENAI_LOGDIR=$RESULT_HOME/logs
