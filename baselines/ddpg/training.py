@@ -5,29 +5,18 @@ import pickle
 
 from baselines.ddpg.ddpg import DDPG
 import baselines.common.tf_util as U
-from baselines.common.fc_learning_utils import *
 
 from baselines import logger
 import numpy as np
 import tensorflow as tf
 from mpi4py import MPI
-import csv
-import os
 
 
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
     normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
     popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory,
-    tau=0.01, eval_env=None, param_noise_adaption_interval=50 , ckpt_dir=None, progress_dir=None, progress_update_interval=1, save_per_epoch=50, seed=1):
+    tau=0.01, eval_env=None, param_noise_adaption_interval=50, ckpt_dir=None, flight_log=None, save_per_episode=50):
     rank = MPI.COMM_WORLD.Get_rank()
-
-    max_steps = nb_epochs * nb_epoch_cycles * nb_rollout_steps
-    
-    # Set up metrics and helpers for restore
-    metric_vars = build_metric_vars(max_steps)
-    metric_ops, metric_phs = get_metric_ops_phs(metric_vars)
-    random_state_vars = build_random_state_vars()
-    random_state_ops, random_state_phs = get_random_state_ops_phs(random_state_vars)
 
     assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
     max_action = env.action_space.high
@@ -41,94 +30,43 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
     logger.info(str(agent.__dict__.items()))
 
     # Set up logging stuff only for a single worker.
+    saver = None
     if rank == 0:
-        saver = tf.train.Saver(max_to_keep=2)
+        saver = tf.train.Saver(max_to_keep=1)
     else:
         saver = None
-
-    random_state = None
 
     step = 0
     episode = 0
     eval_episode_rewards_history = deque(maxlen=100)
     episode_rewards_history = deque(maxlen=100)
-    #with U.single_threaded_session() as sess:
-    with U.make_session(num_cpu=1, supervise=False) as sess:
+    with U.single_threaded_session() as sess:
         # Prepare everything.
         agent.initialize(sess)
-
-        restored = False
-        if ckpt_dir:
-            ckpt = tf.train.get_checkpoint_state(ckpt_dir)
-            if ckpt and ckpt.model_checkpoint_path:
-                saver.restore(sess, ckpt.model_checkpoint_path)
-                logger.info('Restored model from checkpoint {}'.format(ckpt.model_checkpoint_path))
-                restored = True
+        sess.graph.finalize()
 
         agent.reset()
+        obs = env.reset()
+        if eval_env is not None:
+            eval_obs = eval_env.reset()
         done = False
-
-
-        global_step = 0
-        episode_step = 0
-        t = 0
-        epoch = 0
-        episodes = 0
         episode_reward = 0.
+        episode_step = 0
+        episodes = 0
+        t = 0
 
+        epoch = 0
         start_time = time.time()
-
 
         epoch_episode_rewards = []
         epoch_episode_steps = []
         epoch_episode_eval_rewards = []
         epoch_episode_eval_steps = []
+        epoch_start_time = time.time()
         epoch_actions = []
         epoch_qs = []
-        #epoch_episodes = 0
-
-        episode_data = []
-        start_epoch = 0
-
-        if restored:
-            [global_step,  
-             episode_step, 
-             t, 
-             epoch, 
-             episodes, 
-             episode_reward, 
-             epoch_episode_steps, 
-             epoch_episode_rewards,  
-             epoch_qs] = sess.run(metric_vars)
-
-            start_epoch = epoch + 1
-            logger.info(" Restoring global_step={} episode_step={}, t={}, epoch={}, episodes={}".format(global_step, episode_step, t, epoch, episodes))
-
-            epoch_episode_steps = epoch_episode_steps[:episodes].tolist()
-            epoch_episode_rewards = epoch_episode_rewards[:episodes].tolist()
-            epoch_qs = epoch_qs[:global_step].tolist()
-
-            (k, pos, has_gauss, cached) = sess.run(random_state_vars)
-            k = np.array(k, dtype=np.uint32)
-            # Make sure the state was saved previously 
-            if np.any(k):
-                random_state = ('MT19937', k, pos, has_gauss, cached)
-            else:
-                logger.warn("Could not restore random state")
-
-        env.seed(seed, state=random_state)
-        if eval_env is not None:
-            eval_env.seed(seed, state=random_state)
-
-        obs = env.reset()
-        if eval_env is not None:
-            eval_obs = eval_env.reset()
-
-
-        sess.graph.finalize()
-
-        flight_log = FlightLog(progress_dir)
-        for epoch in range(start_epoch, nb_epochs):
+        epoch_episodes = 0
+        for epoch in range(nb_epochs):
             for cycle in range(nb_epoch_cycles):
                 # Perform rollouts.
                 for t_rollout in range(nb_rollout_steps):
@@ -141,8 +79,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                         env.render()
                     assert max_action.shape == action.shape
                     new_obs, r, done, info = env.step(max_action * action)  # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
-                    flight_log.add(episode_step, new_obs, r, max_action * action, info)
-
+                    flight_log.add(episode_step, new_obs, r, action, info)
                     t += 1
                     if rank == 0 and render:
                         env.render()
@@ -152,33 +89,20 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                     # Book-keeping.
                     epoch_actions.append(action)
                     epoch_qs.append(q)
-                    global_step += 1
                     agent.store_transition(obs, action, r, new_obs, done)
                     obs = new_obs
 
                     if done:
                         # Episode done.
-                        #logger.info("Episode {} done".format(episodes))
                         epoch_episode_rewards.append(episode_reward)
                         episode_rewards_history.append(episode_reward)
                         epoch_episode_steps.append(episode_step)
                         episode_reward = 0.
                         episode_step = 0
-
+                        epoch_episodes += 1
                         flight_log.save(episodes)
                         flight_log.clear()
-
-                        #epoch_episodes += 1
                         episodes += 1
-
-                        # Store the random state 
-                        ep_rand_state = info["random_state"]
-                        sess.run(random_state_ops, feed_dict={
-                            random_state_phs[0]: ep_rand_state[1],
-                            random_state_phs[1]: ep_rand_state[2],
-                            random_state_phs[2]: ep_rand_state[3],
-                            random_state_phs[3]: ep_rand_state[4],
-                        })
 
                         agent.reset()
                         obs = env.reset()
@@ -189,7 +113,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                 epoch_adaptive_distances = []
                 for t_train in range(nb_train_steps):
                     # Adapt param noise, if necessary.
-                    if memory.nb_entries >= batch_size and t % param_noise_adaption_interval == 0:
+                    if memory.nb_entries >= batch_size and t_train % param_noise_adaption_interval == 0:
                         distance = agent.adapt_param_noise()
                         epoch_adaptive_distances.append(distance)
 
@@ -234,7 +158,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
             combined_stats['total/duration'] = duration
             combined_stats['total/steps_per_second'] = float(t) / float(duration)
             combined_stats['total/episodes'] = episodes
-            #combined_stats['rollout/episodes'] = epoch_episodes
+            combined_stats['rollout/episodes'] = epoch_episodes
             combined_stats['rollout/actions_std'] = np.std(epoch_actions)
             # Evaluation statistics.
             if eval_env is not None:
@@ -270,30 +194,8 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                     with open(os.path.join(logdir, 'eval_env_state.pkl'), 'wb') as f:
                         pickle.dump(eval_env.get_state(), f)
 
-            # Save model
-            if rank == 0 and epoch % save_per_epoch == 0 and ckpt_dir is not None:
-                #pad
-                _epoch_episode_steps = None
-                _epoch_episode_steps = None
-                if len(epoch_episode_steps) == 0:
-                    _epoch_episode_steps = np.zeros((max_steps,), dtype=int)
-                else:
-                    _epoch_episode_steps = np.pad(epoch_episode_steps, (0, max_steps - len(epoch_episode_steps)), 'edge')
-
-                if len(epoch_episode_rewards) == 0:
-                    _epoch_episode_rewards = np.zeros((max_steps,))
-                else:
-                    _epoch_episode_rewards = np.pad(epoch_episode_rewards, (0, max_steps - len(epoch_episode_rewards)), 'edge')
-                #epoch_qs += [0.0] * (max_steps - len(epoch_qs))
-                _epoch_qs = np.pad(epoch_qs, ( (0, max_steps - len(epoch_qs)), (0, 0), (0,0) ), 'edge')
-                update_metrics(metric_ops, metric_phs, global_step,  episode_step, t, epoch, episodes, episode_reward, _epoch_episode_steps, _epoch_episode_rewards,  _epoch_qs)
-                #print("global step is =", global_step)
-                #sess.run(op_gs, feed_dict = {ph_gs:global_step})
-
-                task_name = "flightcontrol-ddpg-default.ckpt"
+            if saver and epoch % save_per_episode == 0 or epoch == (nb_epochs-1):
+                task_name = "ddpg-{}.ckpt".format(env.spec.id)
                 fname = os.path.join(ckpt_dir, task_name)
                 os.makedirs(os.path.dirname(fname), exist_ok=True)
-                saver.save(sess, fname, global_step=epoch)
-                logger.info("Saved model to {}".format(fname))
-
-
+                saver.save(tf.get_default_session(), fname)

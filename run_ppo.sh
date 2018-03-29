@@ -3,7 +3,7 @@ BASELINE_DIR=$(pwd)
 GYM_HOME=/home/wil/workspace/buflightdev/projects/gym-flightcontrol
 cd $GYM_HOME
 COMMIT=$(git describe --always)
-ENV=attitude-episodic-1-v0
+ENV=attitude-episodic-3-v0
 DIR_NAME=ALG=ppo-ENV=${COMMIT}_${ENV}
 RESULT_HOME=/home/wil/workspace/buflightdev/projects/results/${DIR_NAME}
 export OPENAI_LOGDIR=$RESULT_HOME/logs

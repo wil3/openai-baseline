@@ -12,13 +12,13 @@ from baselines.ddpg.models import Actor, Critic
 from baselines.ddpg.memory import Memory
 from baselines.ddpg.noise import *
 
+from baselines.common.fc_learning_utils import FlightLog
 import gym
+import gym_flightcontrol
 import tensorflow as tf
 from mpi4py import MPI
 
-import gym_flightcontrol
-
-def run(env_id, seed, noise_type, layer_norm, evaluation, **kwargs):
+def run(env_id, seed, noise_type, layer_norm, evaluation, flight_log_dir, **kwargs):
     # Configure things.
     rank = MPI.COMM_WORLD.Get_rank()
     if rank != 0:
@@ -65,12 +65,16 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, **kwargs):
     logger.info('rank {}: seed={}, logdir={}'.format(rank, seed, logger.get_dir()))
     tf.reset_default_graph()
     set_global_seeds(seed)
+    env.seed(seed)
+    if eval_env is not None:
+        eval_env.seed(seed)
 
     # Disable logging for rank != 0 to avoid noise.
     if rank == 0:
+        flight_log = FlightLog(flight_log_dir)
         start_time = time.time()
     training.train(env=env, eval_env=eval_env, param_noise=param_noise,
-        action_noise=action_noise, actor=actor, critic=critic, memory=memory, seed=seed, **kwargs)
+        action_noise=action_noise, actor=actor, critic=critic, memory=memory, flight_log=flight_log, **kwargs)
     env.close()
     if eval_env is not None:
         eval_env.close()
@@ -104,8 +108,7 @@ def parse_args():
     parser.add_argument('--noise-type', type=str, default='adaptive-param_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
     parser.add_argument('--num-timesteps', type=int, default=None)
     parser.add_argument('--ckpt-dir', help='the directory to save model', default='checkpoint')
-    parser.add_argument('--progress-dir', help='the directory to save progress', default='progress')
-    #parser.add_argument('--log-dir')
+    parser.add_argument('--flight-log-dir', help='the directory to save progress', default='progress')
     boolean_flag(parser, 'evaluation', default=False)
     args = parser.parse_args()
     # we don't directly specify timesteps for this script, so make sure that if we do specify them
