@@ -3,6 +3,7 @@
 
 import gym
 import gym_flightcontrol
+import gymfc
 from baselines.common.fc_learning_utils import FlightLog
 import argparse
 from mpi4py import MPI
