@@ -95,42 +95,62 @@ class FlightLog:
 
         self.reward_sum = 0
 
+        self.precision = 6
+
+        self.last_sp = []
+
     def add(self, step, state, r, action, info):
         # Add order to appear when saved to file
-        record = {'step': step}
-        if "step" not in self.log_fieldnames:
-            self.log_fieldnames.append("step")
+        record = {}
+
+
+        # Remove step and sim time to save space logging
+        # since these are sequential
+        
+        #record = {'step': step}
+        #if "step" not in self.log_fieldnames:
+        #    self.log_fieldnames.append("step")
 
         # Get out of info if exists
-        if "sim_time" in info:
-            record["sim_time"] = info["sim_time"]
-            if "sim_time" not in self.log_fieldnames:
-                self.log_fieldnames.append("sim_time")
+        #if "sim_time" in info:
+        #    record["sim_time"] = info["sim_time"]
+        #    if "sim_time" not in self.log_fieldnames:
+        #        self.log_fieldnames.append("sim_time")
 
-        record["reward"] = r
+        record["reward"] = self._format(r)
         if "reward" not in self.log_fieldnames:
             self.log_fieldnames.append("reward")
 
         self.reward_sum += r
-        record["reward_sum"] = self.reward_sum
-        if "reward_sum" not in self.log_fieldnames:
-            self.log_fieldnames.append("reward_sum")
+
+        #record["reward_sum"] = self.reward_sum
+        #if "reward_sum" not in self.log_fieldnames:
+        #    self.log_fieldnames.append("reward_sum")
 
         if "sp" in info:
             sp = info["sp"]
-            record.update({"sp_r": sp[0], "sp_p": sp[1], "sp_y": sp[2]})
+
+            # Only write when the sp changes to save logging space
+            # for episodic this will only occur the first time, continuous
+            # will change
+            if len(self.last_sp) == 0 or self.last_sp != sp:
+                record.update({"sp_r": self._format(sp[0]), "sp_p": self._format(sp[1]), "sp_y": self._format(sp[2])})
+            else:
+                record.update({"sp_r": "", "sp_p": "", "sp_y": ""})
+            self.last_sp = sp
+
             if "sp_r" not in self.log_fieldnames:
                 self.log_fieldnames += ['sp_r', 'sp_p', 'sp_y']
 
         if "current_rpy" in info:
             rpy = info["current_rpy"]
-            record.update({"r": rpy[0], "p": rpy[1], "y": rpy[2]})
+            record.update({"r": self._format(rpy[0]), "p": self._format(rpy[1]), "y": self._format(rpy[2])})
             if "r" not in self.log_fieldnames:
                 self.log_fieldnames += ["r", "p", "y"]
         
 
-        record.update({"m0": action[0], "m1": action[1], "m2": action[2], "m3":
-                       action[3]}) 
+        record.update({"m0": self._format(action[0]), "m1": self._format(action[1]), "m2": self._format(action[2]), "m3":
+                       self._format(action[3])}) 
         if "m0" not in self.log_fieldnames:
             self.log_fieldnames += ["m0", "m1", "m2", "m3"]
 
@@ -138,10 +158,11 @@ class FlightLog:
 
         for i in range(len(state)): 
             state_name = "s{}".format(i)
-            record[state_name] = state[i]
+            record[state_name] = self._format(state[i])
             if state_name not in self.log_fieldnames:
                 self.log_fieldnames.append(state_name)
 
+        """
         if "health" in info:
             record["health"] = info["health"]
             if "health" not in self.log_fieldnames:
@@ -150,7 +171,7 @@ class FlightLog:
             record["axis"] = info["axis"]
             if "axis" not in self.log_fieldnames:
                 self.log_fieldnames.append("axis")
-
+        """
         add = False 
         if "debug" in info:
             debug = info["debug"]
@@ -164,6 +185,9 @@ class FlightLog:
 
         #if add: 
         self.log.append(record)
+
+    def _format(self, value):
+        return "{:.6f}".format(value)
 
     def clear(self):
         self.log = []
