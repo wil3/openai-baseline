@@ -133,7 +133,7 @@ class FlightLog:
             # Only write when the sp changes to save logging space
             # for episodic this will only occur the first time, continuous
             # will change
-            if len(self.last_sp) == 0 or self.last_sp != sp:
+            if len(self.last_sp) == 0 or (self.last_sp != sp).any():
                 record.update({"sp_r": self._format(sp[0]), "sp_p": self._format(sp[1]), "sp_y": self._format(sp[2])})
             else:
                 record.update({"sp_r": "", "sp_p": "", "sp_y": ""})
