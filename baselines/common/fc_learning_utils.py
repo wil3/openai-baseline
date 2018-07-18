@@ -112,10 +112,10 @@ class FlightLog:
         #    self.log_fieldnames.append("step")
 
         # Get out of info if exists
-        #if "sim_time" in info:
-        #    record["sim_time"] = info["sim_time"]
-        #    if "sim_time" not in self.log_fieldnames:
-        #        self.log_fieldnames.append("sim_time")
+        if "sim_time" in info:
+            record["sim_time"] = info["sim_time"]
+            if "sim_time" not in self.log_fieldnames:
+                self.log_fieldnames.append("sim_time")
 
         record["reward"] = self._format(r)
         if "reward" not in self.log_fieldnames:
