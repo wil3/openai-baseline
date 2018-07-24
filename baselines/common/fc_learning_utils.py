@@ -127,40 +127,60 @@ class FlightLog:
         #if "reward_sum" not in self.log_fieldnames:
         #    self.log_fieldnames.append("reward_sum")
 
-        if "sp" in info:
-            sp = info["sp"]
+        if "desired_rate" in info:
+            sp = info["desired_rate"]
 
             # Only write when the sp changes to save logging space
             # for episodic this will only occur the first time, continuous
             # will change
             if len(self.last_sp) == 0 or (self.last_sp != sp).any():
-                record.update({"sp_r": self._format(sp[0]), "sp_p": self._format(sp[1]), "sp_y": self._format(sp[2])})
+                record.update({"desired_rate_r": self._format(sp[0]), "desired_rate_p": self._format(sp[1]), "desired_rate_y": self._format(sp[2])})
             else:
-                record.update({"sp_r": "", "sp_p": "", "sp_y": ""})
+                record.update({"desired_rate_r": "", "desired_rate_p": "", "desired_rate_y": ""})
             self.last_sp = sp
 
-            if "sp_r" not in self.log_fieldnames:
-                self.log_fieldnames += ['sp_r', 'sp_p', 'sp_y']
+            if "desired_rate_r" not in self.log_fieldnames:
+                self.log_fieldnames += ['desired_rate_r', 'desired_rate_p', 'desired_rate_y']
 
-        if "current_rpy" in info:
-            rpy = info["current_rpy"]
-            record.update({"r": self._format(rpy[0]), "p": self._format(rpy[1]), "y": self._format(rpy[2])})
-            if "r" not in self.log_fieldnames:
-                self.log_fieldnames += ["r", "p", "y"]
+        if "measured_rate" in info:
+            rpy = info["measured_rate"]
+            record.update({"measured_rate_r": self._format(rpy[0]), "measured_rate_p": self._format(rpy[1]), "measured_rate_y": self._format(rpy[2])})
+            if "measured_rate_r" not in self.log_fieldnames:
+                self.log_fieldnames += ["measured_rate_r", "measured_rate_p", "measured_rate_y"]
         
 
-        record.update({"m0": self._format(action[0]), "m1": self._format(action[1]), "m2": self._format(action[2]), "m3":
-                       self._format(action[3])}) 
-        if "m0" not in self.log_fieldnames:
-            self.log_fieldnames += ["m0", "m1", "m2", "m3"]
-
+        if "true_rate" in info:
+            rpy = info["true_rate"]
+            record.update({"true_rate_r": self._format(rpy[0]), "true_rate_p": self._format(rpy[1]), "true_rate_y": self._format(rpy[2])})
+            if "true_rate_r" not in self.log_fieldnames:
+                self.log_fieldnames += ["true_rate_r", "true_rate_p", "true_rate_y"]
         
 
+	
+        measured_rpm_motor = info["measured_motor"]
+        record.update({"measured_rpm_m0": self._format(measured_rpm_motor[0]), "measured_rpm_m1": self._format(measured_rpm_motor[1]), "measured_rpm_m2": self._format(measured_rpm_motor[2]), "measured_rpm_m3":
+                       self._format(measured_rpm_motor[3])}) 
+        if "measured_rpm_m0" not in self.log_fieldnames:
+            self.log_fieldnames += ["measured_rpm_m0", "measured_rpm_m1", "measured_rpm_m2", "measured_rpm_m3"]
+
+        true_rpm_motor = info["true_motor"]
+        record.update({"true_rpm_m0": self._format(true_rpm_motor[0]), "true_rpm_m1": self._format(true_rpm_motor[1]), "true_rpm_m2": self._format(true_rpm_motor[2]), "true_rpm_m3":
+                       self._format(true_rpm_motor[3])}) 
+        if "true_rpm_m0" not in self.log_fieldnames:
+            self.log_fieldnames += ["true_rpm_m0", "true_rpm_m1", "true_rpm_m2", "true_rpm_m3"]
+
+
+        record.update({"y0": self._format(action[0]), "y1": self._format(action[1]), "y2": self._format(action[2]), "y3":self._format(action[3])}) 
+        if "y0" not in self.log_fieldnames:
+            self.log_fieldnames += ["y0", "y1", "y2", "y3"]
+
+        """
         for i in range(len(state)): 
             state_name = "s{}".format(i)
             record[state_name] = self._format(state[i])
             if state_name not in self.log_fieldnames:
                 self.log_fieldnames.append(state_name)
+        """
 
         """
         if "health" in info:
