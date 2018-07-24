@@ -51,7 +51,8 @@ def traj_segment_generator(pi, env, horizon, stochastic, flight_log=None):
         prevacs[i] = prevac
 
         ob, rew, new, info = env.step(ac)
-        flight_log.add(cur_ep_len, ob, rew, ac, info)
+        if flight_log:
+            flight_log.add(cur_ep_len, ob, rew, ac, info)
         rews[i] = rew
 
         cur_ep_ret += rew
@@ -61,8 +62,9 @@ def traj_segment_generator(pi, env, horizon, stochastic, flight_log=None):
             ep_lens.append(cur_ep_len)
             cur_ep_ret = 0
             cur_ep_len = 0
-            flight_log.save(ep_number)
-            flight_log.clear()
+            if flight_log:
+                flight_log.save(ep_number)
+                flight_log.clear()
             ep_number += 1
             ob = env.reset()
         t += 1
@@ -93,6 +95,7 @@ def learn(env, policy_fn, *,
         adam_epsilon=1e-5,
         schedule='constant', # annealing for stepsize parameters (epsilon and adam)
         flight_log = None,
+	restore_dir = None,
         ckpt_dir = None,
         save_per_episode=50      ):
 
@@ -137,7 +140,17 @@ def learn(env, policy_fn, *,
 
     saver = None
     if ckpt_dir:
-        saver = tf.train.Saver(max_to_keep=2)
+        saver = tf.train.Saver(max_to_keep=1)
+
+    if restore_dir:
+        ckpt = tf.train.get_checkpoint_state(restore_dir)
+        if ckpt:
+            # If there is one that already exists then restore it
+            print("Restoring model from ", ckpt.model_checkpoint_path)
+            saver.restore(tf.get_default_session(), ckpt.model_checkpoint_path)
+        else:
+            print("Trying to restore model from ", restore_dir, " but doesn't exist")
+
     U.initialize()
     adam.sync()
 
@@ -168,7 +181,9 @@ def learn(env, policy_fn, *,
         elif max_seconds and time.time() - tstart >= max_seconds:
             end = True
 
-        if saver and iters_so_far % save_per_episode == 0 or end:
+
+        # How often should we create checkpoints
+        if saver and (iters_so_far % save_per_episode == 0 or end):
             task_name = "ppo1-{}.ckpt".format(env.spec.id)
             fname = os.path.join(ckpt_dir, task_name)
             os.makedirs(os.path.dirname(fname), exist_ok=True)
