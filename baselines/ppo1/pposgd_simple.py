@@ -142,6 +142,10 @@ def learn(env, policy_fn, *,
     if ckpt_dir:
         saver = tf.train.Saver(max_to_keep=1)
 
+
+    U.initialize()
+    adam.sync()
+
     if restore_dir:
         ckpt = tf.train.get_checkpoint_state(restore_dir)
         if ckpt:
@@ -150,9 +154,6 @@ def learn(env, policy_fn, *,
             saver.restore(tf.get_default_session(), ckpt.model_checkpoint_path)
         else:
             print("Trying to restore model from ", restore_dir, " but doesn't exist")
-
-    U.initialize()
-    adam.sync()
 
     # Prepare for rollouts
     # ----------------------------------------
