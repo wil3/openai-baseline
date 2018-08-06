@@ -99,7 +99,15 @@ class FlightLog:
 
         self.last_sp = []
 
+    def add_list(self, step, state, r, action, info):
+        for i in info:
+            self.add(step, state, r, action, i)
+
     def add(self, step, state, r, action, info):
+        if isinstance(info, list):
+            self.add_list(step, state, r, action, info)
+
+
         # Add order to appear when saved to file
         record = {}
 
@@ -113,6 +121,8 @@ class FlightLog:
 
         # Get out of info if exists
         if "sim_time" in info:
+            if not info["sim_time"]:
+                return 
             record["sim_time"] = info["sim_time"]
             if "sim_time" not in self.log_fieldnames:
                 self.log_fieldnames.append("sim_time")
@@ -157,22 +167,27 @@ class FlightLog:
         
 
 	
-        measured_rpm_motor = info["measured_motor"]
-        record.update({"measured_rpm_m0": self._format(measured_rpm_motor[0]), "measured_rpm_m1": self._format(measured_rpm_motor[1]), "measured_rpm_m2": self._format(measured_rpm_motor[2]), "measured_rpm_m3":
-                       self._format(measured_rpm_motor[3])}) 
-        if "measured_rpm_m0" not in self.log_fieldnames:
-            self.log_fieldnames += ["measured_rpm_m0", "measured_rpm_m1", "measured_rpm_m2", "measured_rpm_m3"]
+        if "measured_motor" in info:
+            measured_rpm_motor = info["measured_motor"]
+            record.update({"measured_rpm_m0": self._format(measured_rpm_motor[0]), "measured_rpm_m1": self._format(measured_rpm_motor[1]), "measured_rpm_m2": self._format(measured_rpm_motor[2]), "measured_rpm_m3":
+                           self._format(measured_rpm_motor[3])}) 
+            if "measured_rpm_m0" not in self.log_fieldnames:
+                self.log_fieldnames += ["measured_rpm_m0", "measured_rpm_m1", "measured_rpm_m2", "measured_rpm_m3"]
 
-        true_rpm_motor = info["true_motor"]
-        record.update({"true_rpm_m0": self._format(true_rpm_motor[0]), "true_rpm_m1": self._format(true_rpm_motor[1]), "true_rpm_m2": self._format(true_rpm_motor[2]), "true_rpm_m3":
-                       self._format(true_rpm_motor[3])}) 
-        if "true_rpm_m0" not in self.log_fieldnames:
-            self.log_fieldnames += ["true_rpm_m0", "true_rpm_m1", "true_rpm_m2", "true_rpm_m3"]
+            true_rpm_motor = info["true_motor"]
+            record.update({"true_rpm_m0": self._format(true_rpm_motor[0]), "true_rpm_m1": self._format(true_rpm_motor[1]), "true_rpm_m2": self._format(true_rpm_motor[2]), "true_rpm_m3":
+                           self._format(true_rpm_motor[3])}) 
+            if "true_rpm_m0" not in self.log_fieldnames:
+                self.log_fieldnames += ["true_rpm_m0", "true_rpm_m1", "true_rpm_m2", "true_rpm_m3"]
 
 
-        record.update({"y0": self._format(action[0]), "y1": self._format(action[1]), "y2": self._format(action[2]), "y3":self._format(action[3])}) 
+        y_fields = []
+        for i in range(len(action)):
+            key = "y{}".format(i)
+            y_fields.append(key)
+            record.update({key : self._format(action[i])})
         if "y0" not in self.log_fieldnames:
-            self.log_fieldnames += ["y0", "y1", "y2", "y3"]
+            self.log_fieldnames += y_fields
 
         """
         for i in range(len(state)): 
@@ -202,6 +217,10 @@ class FlightLog:
                 if log_key not in self.log_fieldnames:
                     self.log_fieldnames.append(log_key)
 
+        if ("steps_since_target_reached_rpy" in info and
+            "error_sum_since_target_reached_rpy" in info):
+            self.steps = info["steps_since_target_reached_rpy"]
+            self.error_sum = info["error_sum_since_target_reached_rpy"]
 
         #if add: 
         self.log.append(record)
@@ -214,6 +233,9 @@ class FlightLog:
         self.reward_sum = 0
 
     def save(self, episode):
+
+        self.save_progress(episode)
+
         filename =  "ep-{}.csv".format(episode)
         filepath = os.path.join(self.save_dir, filename)
         with open(filepath, 'w', newline='') as csvfile:
@@ -223,6 +245,23 @@ class FlightLog:
             for record in self.log:
                 log_writer.writerow(record)
         return filepath
+
+    def save_progress(self, ep):
+            
+        ave_error_rpy = self.error_sum / self.steps
+        ave_total_error = np.sum(ave_error_rpy)/3.
+
+        filename = "progress.csv"
+        filepath = os.path.join(self.save_dir, filename)
+        file_exists = os.path.isfile(filepath)
+        # TODO add ci
+        with open(filepath, 'a', newline='') as csvfile:
+            log_writer = csv.DictWriter(csvfile,
+                                         fieldnames=["ep", "total_err", "err_r", "err_p", "err_y"])
+            if not file_exists:
+                log_writer.writeheader()
+            log_writer.writerow({"ep":ep, "total_err": ave_total_error, "err_r":ave_error_rpy[0], "err_p":ave_error_rpy[1], "err_y":ave_error_rpy[2]})
+
 
 
 
