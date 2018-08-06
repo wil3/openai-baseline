@@ -184,7 +184,7 @@ def learn(env, policy_fn, *,
 
 
         # How often should we create checkpoints
-        if saver and (iters_so_far % save_per_episode == 0 or end):
+        if saver and (episodes_so_far % save_per_episode == 0 or end):
             task_name = "ppo1-{}.ckpt".format(env.spec.id)
             fname = os.path.join(ckpt_dir, task_name)
             os.makedirs(os.path.dirname(fname), exist_ok=True)

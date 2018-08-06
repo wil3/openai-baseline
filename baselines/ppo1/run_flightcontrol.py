@@ -10,7 +10,7 @@ from baselines import logger
 from baselines.ppo1.mlp_policy import MlpPolicy
 from baselines.common import set_global_seeds
 
-def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir, render, restore_dir):
+def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir, render, restore_dir,save_per_episode):
     from baselines.ppo1 import pposgd_simple
     import baselines.common.tf_util as U
     sess = U.single_threaded_session()
@@ -42,8 +42,9 @@ def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir, render, restore
             gamma=0.99, lam=0.95, schedule='linear',
             flight_log = flight_log,
             ckpt_dir = ckpt_dir,
-            restore_dir = restore_dir
+            restore_dir = restore_dir,
             #model_ckpt_path = model_ckpt_path
+            save_per_episode = save_per_episode
             )
     env.close()
 
@@ -58,8 +59,9 @@ if __name__ == '__main__':
     parser.add_argument('--ckpt-dir', type=str, default=None)
     parser.add_argument('--restore-dir', help="If we should restore a graph", type=str, default=None)
     parser.add_argument('--render', action="store_true")
+    parser.add_argument('--ckpt-freq', help='Episode frequency checkpoints are made', type=int, default=50)
 
     args = parser.parse_args()
     train(args.envid, args.num_timesteps, args.seed, args.flight_log_dir,
-          args.ckpt_dir,  args.render, args.restore_dir)
+          args.ckpt_dir,  args.render, args.restore_dir, args.ckpt_freq)
 
