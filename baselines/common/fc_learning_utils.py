@@ -98,6 +98,9 @@ class FlightLog:
         self.precision = 6
 
         self.last_sp = []
+        self.error_sum = np.zeros(3)
+        self.steps = np.ones(3)
+
 
     def add_list(self, step, state, r, action, info):
         for i in info:
