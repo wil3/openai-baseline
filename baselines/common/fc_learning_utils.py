@@ -101,6 +101,8 @@ class FlightLog:
         self.error_sum = np.zeros(3)
         self.steps = np.ones(3)
 
+        self.summary_fieldnames = [] 
+        self.ep_summary = {}
 
     def add_list(self, step, state, r, action, info):
         for i in info:
@@ -220,10 +222,12 @@ class FlightLog:
                 if log_key not in self.log_fieldnames:
                     self.log_fieldnames.append(log_key)
 
-        if ("steps_since_target_reached_rpy" in info and
-            "error_sum_since_target_reached_rpy" in info):
-            self.steps = info["steps_since_target_reached_rpy"]
-            self.error_sum = info["error_sum_since_target_reached_rpy"]
+        if "summary" in info:
+            summary = info["summary"]
+            self.ep_summary = summary
+            for key, val in summary.items():
+                if key not in self.summary_fieldnames:
+                    self.summary_fieldnames.append(key)
 
         #if add: 
         self.log.append(record)
@@ -250,20 +254,18 @@ class FlightLog:
         return filepath
 
     def save_progress(self, ep):
-            
-        ave_error_rpy = self.error_sum / self.steps
-        ave_total_error = np.sum(ave_error_rpy)/3.
-
         filename = "progress.csv"
         filepath = os.path.join(self.save_dir, filename)
         file_exists = os.path.isfile(filepath)
         # TODO add ci
         with open(filepath, 'a', newline='') as csvfile:
             log_writer = csv.DictWriter(csvfile,
-                                         fieldnames=["ep", "total_err", "err_r", "err_p", "err_y"])
+                                         fieldnames=self.summary_fieldnames)
             if not file_exists:
                 log_writer.writeheader()
-            log_writer.writerow({"ep":ep, "total_err": ave_total_error, "err_r":ave_error_rpy[0], "err_p":ave_error_rpy[1], "err_y":ave_error_rpy[2]})
+
+            self.ep_summary.update({"ep":ep})
+            log_writer.writerow(self.ep_summary)
 
 
 
