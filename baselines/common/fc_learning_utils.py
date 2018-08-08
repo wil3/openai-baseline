@@ -259,7 +259,7 @@ class FlightLog:
     def save_progress(self, ep):
         fieldnames = ["ep", "total_reward", "total_time"]
         filename = "progress.csv"
-        filepath = os.path.join(self.save_dir, filename)
+        filepath = os.path.join(self.save_dir,"..", filename)
         file_exists = os.path.isfile(filepath)
         # TODO add ci
         with open(filepath, 'a', newline='') as csvfile:
