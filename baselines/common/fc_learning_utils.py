@@ -267,7 +267,7 @@ class FlightLog:
                                          fieldnames=fieldnames)
             if not file_exists:
                 log_writer.writeheader()
-                ep_summary = {"ep": ep, "total_reward": self.reward_sum, "total_time": self.max_sim_time}
+            ep_summary = {"ep": ep, "total_reward": self.reward_sum, "total_time": self.max_sim_time}
             log_writer.writerow(ep_summary)
 
 
