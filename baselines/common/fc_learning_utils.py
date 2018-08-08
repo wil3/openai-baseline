@@ -104,6 +104,8 @@ class FlightLog:
         self.summary_fieldnames = [] 
         self.ep_summary = {}
 
+        self.max_sim_time = 0
+
     def add_list(self, step, state, r, action, info):
         for i in info:
             self.add(step, state, r, action, i)
@@ -129,6 +131,7 @@ class FlightLog:
             if not info["sim_time"]:
                 return 
             record["sim_time"] = info["sim_time"]
+            self.max_sim_time = info["sim_time"]
             if "sim_time" not in self.log_fieldnames:
                 self.log_fieldnames.append("sim_time")
 
@@ -254,18 +257,18 @@ class FlightLog:
         return filepath
 
     def save_progress(self, ep):
+        fieldnames = ["ep", "total_reward", "total_time"]
         filename = "progress.csv"
         filepath = os.path.join(self.save_dir, filename)
         file_exists = os.path.isfile(filepath)
         # TODO add ci
         with open(filepath, 'a', newline='') as csvfile:
             log_writer = csv.DictWriter(csvfile,
-                                         fieldnames=self.summary_fieldnames)
+                                         fieldnames=fieldnames)
             if not file_exists:
                 log_writer.writeheader()
-
-            self.ep_summary.update({"ep":ep})
-            log_writer.writerow(self.ep_summary)
+                ep_summary = {"ep": ep, "total_reward": self.reward_sum, "total_time": self.max_sim_time}
+            log_writer.writerow(ep_summary)
 
 
 
