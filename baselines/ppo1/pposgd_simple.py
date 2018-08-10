@@ -140,7 +140,7 @@ def learn(env, policy_fn, *,
 
     saver = None
     if ckpt_dir:
-        saver = tf.train.Saver(max_to_keep=1)
+        saver = tf.train.Saver(max_to_keep=1, save_relative_paths=True)
 
 
     U.initialize()
