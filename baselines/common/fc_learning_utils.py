@@ -98,7 +98,8 @@ class FlightLog:
         self.precision = 6
 
         self.last_sp = []
-        self.error_sum = np.zeros(3)
+        self.error_sum_rpy = np.zeros(3)
+        self.error_sum = 0
         self.steps = np.ones(3)
 
         self.summary_fieldnames = [] 
@@ -173,6 +174,8 @@ class FlightLog:
             if "true_rate_r" not in self.log_fieldnames:
                 self.log_fieldnames += ["true_rate_r", "true_rate_p", "true_rate_y"]
         
+            self.error_sum += np.sum(np.abs(info["desired_rate"] - info["true_rate"]))
+
 
 	
         if "measured_motor" in info:
@@ -240,6 +243,7 @@ class FlightLog:
 
     def clear(self):
         self.log = []
+        self.error_sum = 0
         self.reward_sum = 0
 
     def save(self, episode):
@@ -257,7 +261,7 @@ class FlightLog:
         return filepath
 
     def save_progress(self, ep):
-        fieldnames = ["ep", "total_reward", "total_time"]
+        fieldnames = ["ep", "total_reward", "error_sum", "total_time"]
         filename = "progress.csv"
         filepath = os.path.join(self.save_dir,filename)
         file_exists = os.path.isfile(filepath)
@@ -267,7 +271,7 @@ class FlightLog:
                                          fieldnames=fieldnames)
             if not file_exists:
                 log_writer.writeheader()
-            ep_summary = {"ep": ep, "total_reward": self.reward_sum, "total_time": self.max_sim_time}
+                ep_summary = {"ep": ep, "total_reward": self.reward_sum, "total_time": self.max_sim_time, "error_sum": self.error_sum}
             log_writer.writerow(ep_summary)
 
 
