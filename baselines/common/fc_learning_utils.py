@@ -175,6 +175,7 @@ class FlightLog:
                 self.log_fieldnames += ["true_rate_r", "true_rate_p", "true_rate_y"]
         
             self.error_sum += np.sum(np.abs(info["desired_rate"] - info["true_rate"]))
+            self.error_sum_rpy += np.abs(info["desired_rate"] - info["true_rate"])
 
 
 	
@@ -241,10 +242,25 @@ class FlightLog:
     def _format(self, value):
         return "{:.6f}".format(value)
 
+    def is_wave(self):
+        if len(self.observation_history) > 2:
+# We are rounding these because very small chnages (ie -8) are triggering this
+            current = np.round(self.observation_history[-1].true_angular_velocity_rpy)
+            previous_1 = np.round(self.observation_history[-2].true_angular_velocity_rpy)
+            delta_current = current - previous_1
+            slope_dir_rpy = np.sign(delta_current)
+            slope_direction_changed = (slope_dir_rpy != self.last_slope_dir_rpy) & np.logical_not(np.isnan(self.last_slope_dir_rpy))
+            self.last_slope_dir_rpy = slope_dir_rpy
+
+            slopes_not_zero = np.abs(slope_dir_rpy)
+            
+            should_apply_penalty = self.axis_enabled * slopes_not_zero * np.nan_to_num(slope_direction_changed)
+
     def clear(self):
         self.log = []
         self.error_sum = 0
         self.reward_sum = 0
+        self.error_sum_rpy = np.zeros(3)
 
     def save(self, episode):
 
@@ -261,7 +277,7 @@ class FlightLog:
         return filepath
 
     def save_progress(self, ep):
-        fieldnames = ["ep", "total_reward", "error_sum", "total_time"]
+        fieldnames = ["ep", "total_reward", "error_sum", "total_time", "e_r", "e_p", "e_y"]
         filename = "progress.csv"
         filepath = os.path.join(self.save_dir,filename)
         file_exists = os.path.isfile(filepath)
@@ -271,7 +287,7 @@ class FlightLog:
                                          fieldnames=fieldnames)
             if not file_exists:
                 log_writer.writeheader()
-            ep_summary = {"ep": ep, "total_reward": self.reward_sum, "total_time": self.max_sim_time, "error_sum": self.error_sum}
+                ep_summary = {"ep": ep, "total_reward": self.reward_sum, "total_time": self.max_sim_time, "error_sum": self.error_sum, "e_r": self.error_sum_rpy[0], "e_p":self.error_sum_rpy[1], "e_y":self.error_sum_rpy[2]}
             log_writer.writerow(ep_summary)
 
 
