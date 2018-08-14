@@ -140,7 +140,9 @@ def learn(env, policy_fn, *,
 
     saver = None
     if ckpt_dir:
-        saver = tf.train.Saver(save_relative_paths=True)
+        # Store for each one
+        keep = int(max_timesteps/float(save_timestep_period))
+        saver = tf.train.Saver(save_relative_paths=True, max_to_keep=keep)
 
 
     U.initialize()
@@ -185,7 +187,7 @@ def learn(env, policy_fn, *,
 
         # How often should we create checkpoints
         if saver and (timesteps_so_far % save_timestep_period == 0 or end):
-            task_name = "ppo1-{}.ckpt".format(env.spec.id)
+            task_name = "ppo1-{}-{}.ckpt".format(env.spec.id, timesteps_so_far)
             fname = os.path.join(ckpt_dir, task_name)
             os.makedirs(os.path.dirname(fname), exist_ok=True)
             saver.save(tf.get_default_session(), fname)
