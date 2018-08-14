@@ -2,7 +2,10 @@
 # noinspection PyUnresolvedReferences
 
 import gym
-import gymfc
+try:
+    import gym_flightcontrol
+except:
+    import gymfc
 from baselines.common.fc_learning_utils import FlightLog
 import argparse
 from mpi4py import MPI
@@ -22,7 +25,7 @@ def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir, render, restore
         logger.configure()
     else:
         logger.configure(format_strs=[])
-        logger.set_level(logger.DISABLED)
+    logger.set_level(logger.DISABLED)
     workerseed = seed + 1000000 * rank
     def policy_fn(name, ob_space, ac_space):
         return MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space,
