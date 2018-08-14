@@ -142,6 +142,7 @@ def learn(env, policy_fn, *,
     if ckpt_dir:
         # Store for each one
         keep = int(max_timesteps/float(save_timestep_period))
+        print ("[INFO] Keeping ", keep, " checkpoints)
         saver = tf.train.Saver(save_relative_paths=True, max_to_keep=keep)
 
 
@@ -170,7 +171,7 @@ def learn(env, policy_fn, *,
     rewbuffer = deque(maxlen=100) # rolling buffer for episode rewards
 
     assert sum([max_iters>0, max_timesteps>0, max_episodes>0, max_seconds>0])==1, "Only one time constraint permitted"
-
+    next_ckpt_timestep = save_timestep_period
     while True:
         if callback: callback(locals(), globals())
 
@@ -186,11 +187,13 @@ def learn(env, policy_fn, *,
 
 
         # How often should we create checkpoints
-        if saver and (timesteps_so_far % save_timestep_period == 0 or end):
+        # Because of the iterations deployed in batches this might not happen exactly
+        if saver and ((timesteps_so_far >= next_ckpt_timestep) or end):
             task_name = "ppo1-{}-{}.ckpt".format(env.spec.id, timesteps_so_far)
             fname = os.path.join(ckpt_dir, task_name)
             os.makedirs(os.path.dirname(fname), exist_ok=True)
             saver.save(tf.get_default_session(), fname)
+            next_ckpt_timestep += save_timestep_period
 
         if end:
             break
