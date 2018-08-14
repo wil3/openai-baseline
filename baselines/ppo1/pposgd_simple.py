@@ -142,7 +142,7 @@ def learn(env, policy_fn, *,
     if ckpt_dir:
         # Store for each one
         keep = int(max_timesteps/float(save_timestep_period))
-        print ("[INFO] Keeping ", keep, " checkpoints)
+        print ("[INFO] Keeping ", keep, " checkpoints")
         saver = tf.train.Saver(save_relative_paths=True, max_to_keep=keep)
 
 
