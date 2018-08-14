@@ -97,7 +97,7 @@ def learn(env, policy_fn, *,
         flight_log = None,
 	restore_dir = None,
         ckpt_dir = None,
-        save_per_episode=50      ):
+        save_timestep_period = 1000):
 
 
     # Setup losses and stuff
@@ -140,7 +140,7 @@ def learn(env, policy_fn, *,
 
     saver = None
     if ckpt_dir:
-        saver = tf.train.Saver(max_to_keep=1, save_relative_paths=True)
+        saver = tf.train.Saver(save_relative_paths=True)
 
 
     U.initialize()
@@ -184,7 +184,7 @@ def learn(env, policy_fn, *,
 
 
         # How often should we create checkpoints
-        if saver and (episodes_so_far % save_per_episode == 0 or end):
+        if saver and (timesteps_so_far % save_timestep_period == 0 or end):
             task_name = "ppo1-{}.ckpt".format(env.spec.id)
             fname = os.path.join(ckpt_dir, task_name)
             os.makedirs(os.path.dirname(fname), exist_ok=True)
