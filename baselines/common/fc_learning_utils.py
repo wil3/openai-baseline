@@ -146,7 +146,7 @@ class FlightLog:
         #if "reward_sum" not in self.log_fieldnames:
         #    self.log_fieldnames.append("reward_sum")
         sp=None
-        sp_prefix = None
+        sp_prefix=None
         if "desired_rate" in info: #gymfc-dev
             sp = info["desired_rate"]
             sp_prefix = "desired_rate_"
@@ -154,7 +154,7 @@ class FlightLog:
             sp = info["sp"]
             sp_prefix = "sp_"
 
-        if sp:
+        if sp_prefix:
             # Only write when the sp changes to save logging space
             # for episodic this will only occur the first time, continuous
             # will change
@@ -182,7 +182,7 @@ class FlightLog:
             rpy = info["current_rpy"]
             rpy_prefix = ""
 
-        if rpy:
+        if rpy_prefix:
 
             record.update({"{}r".format(rpy_prefix): self._format(rpy[0]), "{}p".format(rpy_prefix): self._format(rpy[1]), "{}y".format(rpy_prefix): self._format(rpy[2])})
             if "{}r".format(rpy_prefix) not in self.log_fieldnames:
