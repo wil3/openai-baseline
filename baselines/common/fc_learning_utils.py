@@ -173,20 +173,24 @@ class FlightLog:
             if "measured_rate_r" not in self.log_fieldnames:
                 self.log_fieldnames += ["measured_rate_r", "measured_rate_p", "measured_rate_y"]
         
-        rpy = None
+        rpy = []
         rpy_prefix = None
+        rpy_keys = []
         if "true_rate" in info:
             rpy = info["true_rate"]
-            rpy_prefix = "true_rate_"
+            rpy_keys = ["true_rate_r","true_rate_p","true_rate_y"]
         elif "current_rpy" in info:
             rpy = info["current_rpy"]
-            rpy_prefix = ""
+            rpy_keys = ["r", "p", "y"]
 
-        if rpy_prefix:
 
-            record.update({"{}r".format(rpy_prefix): self._format(rpy[0]), "{}p".format(rpy_prefix): self._format(rpy[1]), "{}y".format(rpy_prefix): self._format(rpy[2])})
-            if "{}r".format(rpy_prefix) not in self.log_fieldnames:
-                self.log_fieldnames += ["{}r".format(rpy_prefix), "{}p".format(rpy_prefix), "{}y".format(rpy_prefix)]
+        if len(rpy) > 0:
+
+            record.update({rpy_keys[0]: self._format(rpy[0]),
+                           rpy_keys[1]: self._format(rpy[1]), 
+                           rpy_keys[2]: self._format(rpy[2])})
+            if rpy_keys[0] not in self.log_fieldnames:
+                self.log_fieldnames += rpy_keys 
         
             self.error_sum += np.sum(np.abs(sp - rpy))
             self.error_sum_rpy += np.abs(sp - rpy)
