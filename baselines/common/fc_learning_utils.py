@@ -145,21 +145,27 @@ class FlightLog:
         #record["reward_sum"] = self.reward_sum
         #if "reward_sum" not in self.log_fieldnames:
         #    self.log_fieldnames.append("reward_sum")
-
-        if "desired_rate" in info:
+        sp=None
+        sp_prefix = None
+        if "desired_rate" in info: #gymfc-dev
             sp = info["desired_rate"]
+            sp_prefix = "desired_rate_"
+        elif "sp" in info: #gymfc
+            sp = info["sp"]
+            sp_prefix = "sp_"
 
+        if sp:
             # Only write when the sp changes to save logging space
             # for episodic this will only occur the first time, continuous
             # will change
             if len(self.last_sp) == 0 or (self.last_sp != sp).any():
-                record.update({"desired_rate_r": self._format(sp[0]), "desired_rate_p": self._format(sp[1]), "desired_rate_y": self._format(sp[2])})
+                record.update({"{}r".format(sp_prefix): self._format(sp[0]), "{}p".format(sp_prefix): self._format(sp[1]), "{}y".format(sp_prefix): self._format(sp[2])})
             else:
-                record.update({"desired_rate_r": "", "desired_rate_p": "", "desired_rate_y": ""})
+                record.update({"{}r".format(sp_prefix): "", "{}p".format(sp_prefix): "", "{}y".format(sp_prefix): ""})
             self.last_sp = sp
 
-            if "desired_rate_r" not in self.log_fieldnames:
-                self.log_fieldnames += ['desired_rate_r', 'desired_rate_p', 'desired_rate_y']
+            if "{}r".format(sp_prefix) not in self.log_fieldnames:
+                self.log_fieldnames += ['{}r'.format(sp_prefix), '{}p'.format(sp_prefix), '{}y'.format(sp_prefix)]
 
         if "measured_rate" in info:
             rpy = info["measured_rate"]
@@ -167,15 +173,23 @@ class FlightLog:
             if "measured_rate_r" not in self.log_fieldnames:
                 self.log_fieldnames += ["measured_rate_r", "measured_rate_p", "measured_rate_y"]
         
-
+        rpy = None
+        rpy_prefix = None
         if "true_rate" in info:
             rpy = info["true_rate"]
-            record.update({"true_rate_r": self._format(rpy[0]), "true_rate_p": self._format(rpy[1]), "true_rate_y": self._format(rpy[2])})
-            if "true_rate_r" not in self.log_fieldnames:
-                self.log_fieldnames += ["true_rate_r", "true_rate_p", "true_rate_y"]
+            rpy_prefix = "true_rate_"
+        elif "current_rpy" in info:
+            rpy = info["current_rpy"]
+            rpy_prefix = ""
+
+        if rpy:
+
+            record.update({"{}r".format(rpy_prefix): self._format(rpy[0]), "{}p".format(rpy_prefix): self._format(rpy[1]), "{}y".format(rpy_prefix): self._format(rpy[2])})
+            if "{}r".format(rpy_prefix) not in self.log_fieldnames:
+                self.log_fieldnames += ["{}r".format(rpy_prefix), "{}p".format(rpy_prefix), "{}y".format(rpy_prefix)]
         
-            self.error_sum += np.sum(np.abs(info["desired_rate"] - info["true_rate"]))
-            self.error_sum_rpy += np.abs(info["desired_rate"] - info["true_rate"])
+            self.error_sum += np.sum(np.abs(sp - rpy))
+            self.error_sum_rpy += np.abs(sp - rpy)
 
 
 	
