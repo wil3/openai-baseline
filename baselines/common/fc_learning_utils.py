@@ -106,6 +106,7 @@ class FlightLog:
         self.ep_summary = {}
 
         self.max_sim_time = 0
+        self.step_count = 0
 
     def add_list(self, step, state, r, action, info):
         for i in info:
@@ -255,6 +256,7 @@ class FlightLog:
                     self.summary_fieldnames.append(key)
 
         #if add: 
+        self.step_count += 1
         self.log.append(record)
 
     def _format(self, value):
@@ -278,6 +280,7 @@ class FlightLog:
         self.log = []
         self.error_sum = 0
         self.reward_sum = 0
+        self.step_count = 0
         self.error_sum_rpy = np.zeros(3)
 
     def save(self, episode):
@@ -295,7 +298,7 @@ class FlightLog:
         return filepath
 
     def save_progress(self, ep):
-        fieldnames = ["ep", "total_reward", "error_sum", "total_time", "e_r", "e_p", "e_y"]
+        fieldnames = ["ep", "total_reward", "error_sum", "total_time", "e_r", "e_p", "e_y","steps_taken"]
         filename = "progress.csv"
         filepath = os.path.join(self.save_dir,filename)
         file_exists = os.path.isfile(filepath)
@@ -305,7 +308,7 @@ class FlightLog:
                                          fieldnames=fieldnames)
             if not file_exists:
                 log_writer.writeheader()
-            ep_summary = {"ep": ep, "total_reward": self.reward_sum, "total_time": self.max_sim_time, "error_sum": self.error_sum, "e_r": self.error_sum_rpy[0], "e_p":self.error_sum_rpy[1], "e_y":self.error_sum_rpy[2]}
+                ep_summary = {"ep": ep, "total_reward": self.reward_sum, "total_time": self.max_sim_time, "error_sum": self.error_sum, "e_r": self.error_sum_rpy[0], "e_p":self.error_sum_rpy[1], "e_y":self.error_sum_rpy[2], "steps_taken":self.step_count}
             log_writer.writerow(ep_summary)
 
 
