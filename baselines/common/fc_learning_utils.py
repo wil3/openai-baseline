@@ -102,6 +102,9 @@ class FlightLog:
         self.error_sum = 0
         self.steps = np.ones(3)
 
+        self.omega_jerk_sum = 0
+        self.pwm_jerk_sum = 0
+
         self.summary_fieldnames = [] 
         self.ep_summary = {}
 
@@ -255,6 +258,12 @@ class FlightLog:
                 if key not in self.summary_fieldnames:
                     self.summary_fieldnames.append(key)
 
+
+        if "omega_jerk" in info:
+            self.omega_jerk_sum += np.sum(np.abs(info["omega_jerk"]))
+        if "pwm_jerk" in info:
+            self.pwm_jerk_sum += np.sum(np.abs(info["pwm_jerk"]))
+
         #if add: 
         self.step_count += 1
         self.log.append(record)
@@ -282,6 +291,8 @@ class FlightLog:
         self.reward_sum = 0
         self.step_count = 0
         self.error_sum_rpy = np.zeros(3)
+        self.omega_jerk_sum = 0
+        self.pwm_jerk_sum = 0
 
     def save(self, episode):
 
@@ -298,7 +309,7 @@ class FlightLog:
         return filepath
 
     def save_progress(self, ep):
-        fieldnames = ["ep", "total_reward", "error_sum", "total_time", "e_r", "e_p", "e_y","steps_taken"]
+        fieldnames = ["ep", "total_reward", "error_sum", "total_time", "e_r", "e_p", "e_y","steps_taken", "omega_jerk", "pwm_jerk"]
         filename = "progress.csv"
         filepath = os.path.join(self.save_dir,filename)
         file_exists = os.path.isfile(filepath)
@@ -308,7 +319,8 @@ class FlightLog:
                                          fieldnames=fieldnames)
             if not file_exists:
                 log_writer.writeheader()
-            ep_summary = {"ep": ep, "total_reward": self.reward_sum, "total_time": self.max_sim_time, "error_sum": self.error_sum, "e_r": self.error_sum_rpy[0], "e_p":self.error_sum_rpy[1], "e_y":self.error_sum_rpy[2], "steps_taken":self.step_count}
+
+            ep_summary = {"ep": ep, "total_reward": self.reward_sum, "total_time": self.max_sim_time, "error_sum": self.error_sum, "e_r": self.error_sum_rpy[0], "e_p":self.error_sum_rpy[1], "e_y":self.error_sum_rpy[2], "steps_taken":self.step_count, "omega_jerk": self.omega_jerk_sum, "pwm_jerk": self.pwm_jerk_sum}
             log_writer.writerow(ep_summary)
 
 
