@@ -343,8 +343,8 @@ class FlightLog:
 
             ep_summary = {"ep": ep, 
                           "sp_r": self.sp[0],
-                          "sp_p": self.sp[0],
-                          "sp_y": self.sp[0],
+                          "sp_p": self.sp[1],
+                          "sp_y": self.sp[2],
                           "total_reward": self.reward_sum, 
                           "total_time": self.max_sim_time, 
                           "error_sum": self.error_sum, 
@@ -354,7 +354,7 @@ class FlightLog:
                           "steps_taken":self.step_count, 
                           "omega_jerk": self.omega_jerk_sum, 
                           "pwm_jerk": self.pwm_jerk_sum,
-                          "velocity_reached": self.velocity_reached.all()}
+                          "velocity_reached": self.velocity_reached.all()*1}
             log_writer.writerow(ep_summary)
 
 
