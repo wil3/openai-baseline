@@ -84,6 +84,8 @@ def update_metrics(ops, ph, *args):
 
 
 class FlightLog:
+    BAND_TOL_PERCENT = 0.05     
+    MIN_BAND = 0.00872 * 2 #1 deg        
     def __init__(self, save_dir=None):
         self.log = []
         self.save_dir = save_dir
@@ -97,10 +99,13 @@ class FlightLog:
 
         self.precision = 6
 
+        self.sp = np.zeros(3)
         self.last_sp = []
         self.error_sum_rpy = np.zeros(3)
         self.error_sum = 0
         self.steps = np.ones(3)
+
+        self.velocity_reached=np.array([False, False, False])
 
         self.omega_jerk_sum = 0
         self.pwm_jerk_sum = 0
@@ -110,6 +115,10 @@ class FlightLog:
 
         self.max_sim_time = 0
         self.step_count = 0
+
+    def is_target_reached(self, desired, actual):
+        band = np.maximum(self.MIN_BAND, desired * self.BAND_TOL_PERCENT)
+        return ((np.abs(actual) >= (np.abs(desired) - band)) & (np.sign(actual) == np.sign(desired)))
 
     def add_list(self, step, state, r, action, info):
         for i in info:
@@ -157,6 +166,10 @@ class FlightLog:
         elif "sp" in info: #gymfc
             sp = info["sp"]
             sp_prefix = "sp_"
+
+        # We are now tracking the setpoin so it can be added to the summary
+        # file
+        self.sp = sp
 
         if sp_prefix:
             # Only write when the sp changes to save logging space
@@ -264,6 +277,10 @@ class FlightLog:
         if "pwm_jerk" in info:
             self.pwm_jerk_sum += np.sum(np.abs(info["pwm_jerk"]))
 
+
+        # Only will count if all are reached though
+        self.velocity_reached |= self.is_target_reached(sp, rpy)
+
         #if add: 
         self.step_count += 1
         self.log.append(record)
@@ -286,6 +303,8 @@ class FlightLog:
             should_apply_penalty = self.axis_enabled * slopes_not_zero * np.nan_to_num(slope_direction_changed)
 
     def clear(self):
+        self.sp = np.zeros(3)
+        self.velocity_reached=np.array([False, False, False])
         self.log = []
         self.error_sum = 0
         self.reward_sum = 0
@@ -295,9 +314,11 @@ class FlightLog:
         self.pwm_jerk_sum = 0
 
     def save(self, episode):
+        """ If a filename isn't provided then just use the episode number """ 
 
         self.save_progress(episode)
 
+        # Now dump the data collected for the task
         filename =  "ep-{}.csv".format(episode)
         filepath = os.path.join(self.save_dir, filename)
         with open(filepath, 'w', newline='') as csvfile:
@@ -309,7 +330,7 @@ class FlightLog:
         return filepath
 
     def save_progress(self, ep):
-        fieldnames = ["ep", "total_reward", "error_sum", "total_time", "e_r", "e_p", "e_y","steps_taken", "omega_jerk", "pwm_jerk"]
+        fieldnames = ["ep","sp_r","sp_p","sp_y","total_reward", "error_sum", "total_time", "e_r", "e_p", "e_y","steps_taken", "omega_jerk", "pwm_jerk","velocity_reached"]
         filename = "progress.csv"
         filepath = os.path.join(self.save_dir,filename)
         file_exists = os.path.isfile(filepath)
@@ -320,7 +341,20 @@ class FlightLog:
             if not file_exists:
                 log_writer.writeheader()
 
-            ep_summary = {"ep": ep, "total_reward": self.reward_sum, "total_time": self.max_sim_time, "error_sum": self.error_sum, "e_r": self.error_sum_rpy[0], "e_p":self.error_sum_rpy[1], "e_y":self.error_sum_rpy[2], "steps_taken":self.step_count, "omega_jerk": self.omega_jerk_sum, "pwm_jerk": self.pwm_jerk_sum}
+            ep_summary = {"ep": ep, 
+                          "sp_r": self.sp[0],
+                          "sp_p": self.sp[0],
+                          "sp_y": self.sp[0],
+                          "total_reward": self.reward_sum, 
+                          "total_time": self.max_sim_time, 
+                          "error_sum": self.error_sum, 
+                          "e_r": self.error_sum_rpy[0], 
+                          "e_p":self.error_sum_rpy[1], 
+                          "e_y":self.error_sum_rpy[2], 
+                          "steps_taken":self.step_count, 
+                          "omega_jerk": self.omega_jerk_sum, 
+                          "pwm_jerk": self.pwm_jerk_sum,
+                          "velocity_reached": self.velocity_reached.all()}
             log_writer.writerow(ep_summary)
 
 
