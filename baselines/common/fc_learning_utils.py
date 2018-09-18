@@ -109,6 +109,7 @@ class FlightLog:
 
         self.omega_jerk_sum = 0
         self.pwm_jerk_sum = 0
+        self.effort_sum = 0
 
         self.summary_fieldnames = [] 
         self.ep_summary = {}
@@ -155,9 +156,6 @@ class FlightLog:
 
         self.reward_sum += r
 
-        #record["reward_sum"] = self.reward_sum
-        #if "reward_sum" not in self.log_fieldnames:
-        #    self.log_fieldnames.append("reward_sum")
         sp=None
         sp_prefix=None
         if "desired_rate" in info: #gymfc-dev
@@ -272,12 +270,16 @@ class FlightLog:
                     self.summary_fieldnames.append(key)
 
 
+        # Now update all of the summary variables that will be added to the 
+        # progress.csv file
+
         if "omega_jerk" in info:
             self.omega_jerk_sum += np.sum(np.abs(info["omega_jerk"]))
         if "pwm_jerk" in info:
             self.pwm_jerk_sum += np.sum(np.abs(info["pwm_jerk"]))
 
-
+        action_scale = (action + 1)/2.
+        self.effort_sum = self.effort_sum + action_scale 
         # Only will count if all are reached though
         self.velocity_reached |= self.is_target_reached(sp, rpy)
 
@@ -303,6 +305,7 @@ class FlightLog:
             should_apply_penalty = self.axis_enabled * slopes_not_zero * np.nan_to_num(slope_direction_changed)
 
     def clear(self):
+        self.effort_sum = 0
         self.sp = np.zeros(3)
         self.velocity_reached=np.array([False, False, False])
         self.log = []
@@ -330,7 +333,7 @@ class FlightLog:
         return filepath
 
     def save_progress(self, ep):
-        fieldnames = ["ep","sp_r","sp_p","sp_y","total_reward", "error_sum", "total_time", "e_r", "e_p", "e_y","steps_taken", "omega_jerk", "pwm_jerk","velocity_reached"]
+        fieldnames = ["ep","sp_r","sp_p","sp_y","total_reward", "error_sum", "total_time", "e_r", "e_p", "e_y","steps_taken", "omega_jerk", "pwm_jerk","velocity_reached", "effort"]
         filename = "progress.csv"
         filepath = os.path.join(self.save_dir,filename)
         file_exists = os.path.isfile(filepath)
@@ -354,7 +357,8 @@ class FlightLog:
                           "steps_taken":self.step_count, 
                           "omega_jerk": self.omega_jerk_sum, 
                           "pwm_jerk": self.pwm_jerk_sum,
-                          "velocity_reached": self.velocity_reached.all()*1}
+                          "velocity_reached": self.velocity_reached.all()*1,
+                          "effort": np.sum(self.effort_sum)}
             log_writer.writerow(ep_summary)
 
 
