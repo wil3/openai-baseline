@@ -278,7 +278,7 @@ class FlightLog:
         if "pwm_jerk" in info:
             self.pwm_jerk_sum += np.sum(np.abs(info["pwm_jerk"]))
 
-        action_scale = (action + 1)/2.
+        action_scale = (np.clip(action, -1, 1) + 1)/2.
         self.effort_sum = self.effort_sum + action_scale 
         # Only will count if all are reached though
         self.velocity_reached |= self.is_target_reached(sp, rpy)
