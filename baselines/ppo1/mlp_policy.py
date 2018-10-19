@@ -40,12 +40,16 @@ class MlpPolicy(object):
             else:
                 pdparam = tf.layers.dense(last_out, pdtype.param_shape()[0], name='final', kernel_initializer=U.normc_initializer(0.01))
 
+        # Since we are using a Box for the action space
+        # this distribution is used DiagGaussianPd
         self.pd = pdtype.pdfromflat(pdparam)
 
         self.state_in = []
         self.state_out = []
 
         stochastic = tf.placeholder(dtype=tf.bool, shape=())
+        # if stocastic = true, the call the sample of the distribion 
+        # otherwise just use the mean
         ac = U.switch(stochastic, self.pd.sample(), self.pd.mode())
         self._act = U.function([stochastic, ob], [ac, self.vpred])
 
