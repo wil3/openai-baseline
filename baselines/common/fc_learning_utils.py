@@ -234,6 +234,17 @@ class FlightLog:
         if "y0" not in self.log_fieldnames:
             self.log_fieldnames += y_fields
 
+        if "pwm0" in info:
+            pwm_fields = []
+            for i in range(4):
+                key = "pwm{}".format(i)
+                pwm_fields.append(key)
+                record.update({key : self._format(info[key])})
+            if "pwm0" not in self.log_fieldnames:
+                self.log_fieldnames += pwm_fields
+
+
+
         """
         for i in range(len(state)): 
             state_name = "s{}".format(i)
