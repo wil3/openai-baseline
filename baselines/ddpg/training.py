@@ -31,10 +31,11 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
 
     # Set up logging stuff only for a single worker.
     saver = None
-    if rank == 0:
-        saver = tf.train.Saver(max_to_keep=1)
-    else:
-        saver = None
+    if ckpt_dir:
+        # Store for each one
+        keep = int(nb_epochs/float(save_per_episode))
+        print ("[INFO] Keeping ", keep, " checkpoints")
+        saver = tf.train.Saver(save_relative_paths=True, max_to_keep=keep)
 
     step = 0
     episode = 0
@@ -195,7 +196,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                         pickle.dump(eval_env.get_state(), f)
 
             if saver and epoch % save_per_episode == 0 or epoch == (nb_epochs-1):
-                task_name = "ddpg-{}.ckpt".format(env.spec.id)
+                task_name = "ddpg-{}-{}.ckpt".format(env.spec.id, epoch)
                 fname = os.path.join(ckpt_dir, task_name)
                 os.makedirs(os.path.dirname(fname), exist_ok=True)
                 saver.save(tf.get_default_session(), fname)

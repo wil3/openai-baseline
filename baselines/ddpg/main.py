@@ -14,7 +14,10 @@ from baselines.ddpg.noise import *
 
 from baselines.common.fc_learning_utils import FlightLog
 import gym
-import gym_flightcontrol
+try:
+    import gym_flightcontrol
+except:
+    import gymfc
 import tensorflow as tf
 from mpi4py import MPI
 
@@ -26,7 +29,7 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, flight_log_dir, **kwar
 
     # Create envs.
     env = gym.make(env_id)
-    env = bench.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), str(rank)))
+    #env = bench.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), str(rank)))
 
     if evaluation and rank==0:
         eval_env = gym.make(env_id)
