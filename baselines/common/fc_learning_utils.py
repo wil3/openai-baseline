@@ -219,7 +219,8 @@ class FlightLog:
             if "measured_rpm_m0" not in self.log_fieldnames:
                 self.log_fieldnames += ["measured_rpm_m0", "measured_rpm_m1", "measured_rpm_m2", "measured_rpm_m3"]
 
-            true_rpm_motor = info["true_motor"]
+        if "true_rpm" in info:
+            true_rpm_motor = info["true_rpm"]
             record.update({"true_rpm_m0": self._format(true_rpm_motor[0]), "true_rpm_m1": self._format(true_rpm_motor[1]), "true_rpm_m2": self._format(true_rpm_motor[2]), "true_rpm_m3":
                            self._format(true_rpm_motor[3])}) 
             if "true_rpm_m0" not in self.log_fieldnames:
