@@ -2,10 +2,7 @@
 # noinspection PyUnresolvedReferences
 
 import gym
-try:
-    import gym_flightcontrol
-except:
-    import gymfc
+from neuroflight_trainer.neuroflight_arxiv_trainer import GyroErrorGyroDeltaErrorEnv
 from baselines.common.fc_learning_utils import FlightLog
 import argparse
 from mpi4py import MPI
@@ -13,7 +10,7 @@ from baselines import logger
 from baselines.ppo1.mlp_policy import MlpPolicy
 from baselines.common import set_global_seeds
 
-def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir, render, restore_dir,ckpt_freq, 
+def train(env, num_timesteps, seed, flight_log_dir, ckpt_dir, render, restore_dir,ckpt_freq, 
           optim_stepsize=3e-4, schedule="linear", gamma=0.99, optim_epochs=10, optim_batchsize=64, horizon=2048):
     from baselines.ppo1 import pposgd_simple
     import baselines.common.tf_util as U
@@ -31,9 +28,9 @@ def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir, render, restore
         return MlpPolicy(name=name, ob_space=ob_space, ac_space=ac_space,
             hid_size=32, num_hid_layers=2)
     flight_log = None
-    if flight_log_dir:
-        flight_log = FlightLog(flight_log_dir)
-    env = gym.make(env_id)
+    # FIXME
+    #if flight_log_dir:
+    #    flight_log = FlightLog(flight_log_dir)
     if render:
         env.render()
     env.seed(workerseed)
@@ -55,7 +52,7 @@ def train(env_id, num_timesteps, seed, flight_log_dir, ckpt_dir, render, restore
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('envid', type=str)
+    parser.add_argument('model_sdf', type=str)
     parser.add_argument('--num-timesteps', type=int, default=1e7)
     parser.add_argument('--seed', help='RNG seed', type=int, default=0)
     parser.add_argument('--flight-log-dir', type=str, default=None)
@@ -72,6 +69,18 @@ if __name__ == '__main__':
     parser.add_argument('--horizon', type=int, default=2048)
 
     args = parser.parse_args()
-    train(args.envid, args.num_timesteps, args.seed, args.flight_log_dir,
+
+
+    env = GyroErrorGyroDeltaErrorEnv(omega_bounds=[-300,300],
+        max_sim_time=30.,
+        noisefree=False,
+        sigma=5,
+        command_time=0.,
+        command_time_off=[0.25, 1.0],
+        command_time_on=[0.25, 1.0],
+        aircraft_config=args.model_sdf
+                                     )
+
+    train(env, args.num_timesteps, args.seed, args.flight_log_dir,
           args.ckpt_dir,  args.render, args.restore_dir, args.ckpt_freq, schedule=args.schedule, optim_stepsize=args.stepsize, horizon=args.horizon, optim_batchsize=args.batchsize)
 
