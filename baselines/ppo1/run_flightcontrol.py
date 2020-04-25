@@ -10,7 +10,7 @@ from baselines import logger
 from baselines.ppo1.mlp_policy import MlpPolicy
 from baselines.common import set_global_seeds
 
-def train(env, num_timesteps, seed, flight_log_dir, ckpt_dir, render, restore_dir,ckpt_freq, 
+def train(env, num_timesteps, seed, flight_log_dir=None, ckpt_dir=None, render=False, ckpt_freq=0, restore_dir=None,  
           optim_stepsize=3e-4, schedule="linear", gamma=0.99, optim_epochs=10, optim_batchsize=64, horizon=2048):
     from baselines.ppo1 import pposgd_simple
     import baselines.common.tf_util as U
@@ -50,6 +50,7 @@ def train(env, num_timesteps, seed, flight_log_dir, ckpt_dir, render, restore_di
 
 
 
+"""
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('model_sdf', type=str)
@@ -82,5 +83,5 @@ if __name__ == '__main__':
                                      )
 
     train(env, args.num_timesteps, args.seed, args.flight_log_dir,
-          args.ckpt_dir,  args.render, args.restore_dir, args.ckpt_freq, schedule=args.schedule, optim_stepsize=args.stepsize, horizon=args.horizon, optim_batchsize=args.batchsize)
-
+          args.ckpt_dir,  args.render, args.ckpt_freq, restore_dir=args.restore_dir, schedule=args.schedule, optim_stepsize=args.stepsize, horizon=args.horizon, optim_batchsize=args.batchsize)
+"""

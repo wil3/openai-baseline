@@ -84,8 +84,11 @@ def update_metrics(ops, ph, *args):
 
 
 class FlightLog:
-    BAND_TOL_PERCENT = 0.05     
-    MIN_BAND = 0.00872 * 2 #1 deg        
+    #BAND_TOL_PERCENT = 0.05     
+    BAND_TOL_PERCENT = 0.1     
+    # FIXME
+    #MIN_BAND = 0.00872 * 2 #1 deg        
+    MIN_BAND = 2 #1 deg        
     def __init__(self, save_dir=None):
         self.log = []
         self.save_dir = save_dir
@@ -118,6 +121,7 @@ class FlightLog:
         self.step_count = 0
 
     def is_target_reached(self, desired, actual):
+        print ("D=", desired)
         band = np.maximum(self.MIN_BAND, desired * self.BAND_TOL_PERCENT)
         return ((np.abs(actual) >= (np.abs(desired) - band)) & (np.sign(actual) == np.sign(desired)))
 
@@ -327,6 +331,7 @@ class FlightLog:
         self.error_sum_rpy = np.zeros(3)
         self.omega_jerk_sum = 0
         self.pwm_jerk_sum = 0
+        self.last_sp = []
 
     def save(self, episode):
         """ If a filename isn't provided then just use the episode number """ 
